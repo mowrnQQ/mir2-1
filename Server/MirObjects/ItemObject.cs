@@ -62,10 +62,24 @@ namespace Server.MirObjects
                 ExpireTime = Envir.Time + Settings.ItemTimeOut * Settings.Minute;
 
             Item = item;
+
             if (Item.IsAdded)
                 NameColour = Color.Cyan;
+			else
+			{
+				if (item.Info.Grade == ItemGrade.无)
+					NameColour = Color.White;
+				if (item.Info.Grade == ItemGrade.普通)
+					NameColour = Color.White;
+				if (item.Info.Grade == ItemGrade.稀有)
+					NameColour = Color.DeepSkyBlue;
+				if (item.Info.Grade == ItemGrade.传奇)
+					NameColour = Color.DarkOrange;
+				if (item.Info.Grade == ItemGrade.史诗)
+					NameColour = Color.Plum;
+			}
 
-            CurrentMap = dropper.CurrentMap;
+			CurrentMap = dropper.CurrentMap;
             CurrentLocation = dropper.CurrentLocation;
         }
         public ItemObject(MapObject dropper, UserItem item, Point manualpoint)
@@ -73,8 +87,22 @@ namespace Server.MirObjects
             ExpireTime = Envir.Time + Settings.ItemTimeOut * Settings.Minute;
 
             Item = item;
-            if (Item.IsAdded)
-                NameColour = Color.Cyan;
+
+			if (Item.IsAdded)
+				NameColour = Color.Cyan;
+			else
+			{
+				if (item.Info.Grade == ItemGrade.无)
+					NameColour = Color.White;
+				if (item.Info.Grade == ItemGrade.普通)
+					NameColour = Color.White;
+				if (item.Info.Grade == ItemGrade.稀有)
+					NameColour = Color.DeepSkyBlue;
+				if (item.Info.Grade == ItemGrade.传奇)
+					NameColour = Color.DarkOrange;
+				if (item.Info.Grade == ItemGrade.史诗)
+					NameColour = Color.Plum;
+			}
 
             CurrentMap = dropper.CurrentMap;
             CurrentLocation = manualpoint;

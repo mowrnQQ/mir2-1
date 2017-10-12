@@ -35,6 +35,7 @@ namespace Server
 
             SafeZoneBorderCheckBox.Checked = Settings.SafeZoneBorder;
             SafeZoneHealingCheckBox.Checked = Settings.SafeZoneHealing;
+            gameMasterEffect_CheckBox.Checked = Settings.GameMasterEffect;
 
             SaveDelayTextBox.Text = Settings.SaveDelay.ToString();
             UseSQLServerCheckbox.Checked = Settings.UseSQLServer;
@@ -84,7 +85,7 @@ namespace Server
             if (ushort.TryParse(SaveDelayTextBox.Text, out tempshort))
                 Settings.SaveDelay = tempshort;
 
-            //Settings.UseSQLServer = UseSQLServerCheckbox.Checked;
+            Settings.UseSQLServer = UseSQLServerCheckbox.Checked;
             Settings.UseConnString = UseConnStringCheckBox.Checked;
             Settings.ConnString = ConnStringTextBox.Text;
 
@@ -102,6 +103,7 @@ namespace Server
 
             Settings.SafeZoneBorder = SafeZoneBorderCheckBox.Checked;
             Settings.SafeZoneHealing = SafeZoneHealingCheckBox.Checked;
+            Settings.GameMasterEffect = gameMasterEffect_CheckBox.Checked;
         }
 
         private void IPAddressCheck(object sender, EventArgs e)

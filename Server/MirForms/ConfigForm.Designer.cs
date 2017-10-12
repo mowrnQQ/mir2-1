@@ -64,6 +64,7 @@
             this.PasswordCheckBox = new System.Windows.Forms.CheckBox();
             this.AccountCheckBox = new System.Windows.Forms.CheckBox();
             this.tabPage4 = new System.Windows.Forms.TabPage();
+            this.label12 = new System.Windows.Forms.Label();
             this.SaveAccount = new System.Windows.Forms.Button();
             this.SaveDBButton = new System.Windows.Forms.Button();
             this.UseSQLServerCheckbox = new System.Windows.Forms.CheckBox();
@@ -76,6 +77,7 @@
             this.label12 = new System.Windows.Forms.Label();
             this.ConnStringTextBox = new System.Windows.Forms.TextBox();
             this.UseConnStringCheckBox = new System.Windows.Forms.CheckBox();
+            this.gameMasterEffect_CheckBox = new System.Windows.Forms.CheckBox();
             this.configTabs.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.groupBox1.SuspendLayout();
@@ -517,6 +519,7 @@
             // 
             // tabPage5
             // 
+            this.tabPage5.Controls.Add(this.gameMasterEffect_CheckBox);
             this.tabPage5.Controls.Add(this.SafeZoneHealingCheckBox);
             this.tabPage5.Controls.Add(this.SafeZoneBorderCheckBox);
             this.tabPage5.Location = new System.Drawing.Point(4, 22);
@@ -554,6 +557,15 @@
             this.VPathDialog.FileName = "Mir2.Exe";
             this.VPathDialog.Filter = "Executable Files (*.exe)|*.exe";
             // 
+			// gameMasterEffect_CheckBox
+            // 
+            this.gameMasterEffect_CheckBox.AutoSize = true;
+            this.gameMasterEffect_CheckBox.Location = new System.Drawing.Point(24, 66);
+            this.gameMasterEffect_CheckBox.Name = "gameMasterEffect_CheckBox";
+            this.gameMasterEffect_CheckBox.Size = new System.Drawing.Size(120, 17);
+            this.gameMasterEffect_CheckBox.TabIndex = 2;
+            this.gameMasterEffect_CheckBox.Text = "Game Master Effect";
+            this.gameMasterEffect_CheckBox.UseVisualStyleBackColor = true;
             // label12
             // 
             this.label12.AutoSize = true;
@@ -657,5 +669,6 @@
         private System.Windows.Forms.Label label12;
         private System.Windows.Forms.TextBox ConnStringTextBox;
         private System.Windows.Forms.CheckBox UseConnStringCheckBox;
+        private System.Windows.Forms.CheckBox gameMasterEffect_CheckBox;
     }
 }
