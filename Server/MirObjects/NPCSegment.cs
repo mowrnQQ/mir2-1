@@ -1015,6 +1015,20 @@ namespace Server.MirObjects
                     if (parts.Length < 3) return;
                     acts.Add(new NPCActions(ActionType.CloseGate, parts[1], parts[2]));
                     break;
+                case "NEWHERO":
+                    if (parts.Length < 4) return;
+                    acts.Add(new NPCActions(ActionType.NewHero, parts[1], parts[2], parts[3]));
+                    break;
+                case "DELETEHERO":
+                    acts.Add(new NPCActions(ActionType.DeleteHero));
+                    break;
+                case "SELECTHERO":
+                    if(parts.Length < 2) return;
+                    acts.Add(new NPCActions(ActionType.SelectHero, parts[1]));
+                    break;
+                case "REVIVEHERO":
+                    acts.Add(new NPCActions(ActionType.ReviveHero));
+                    break;
             }
 
         }
@@ -3490,6 +3504,40 @@ namespace Server.MirObjects
                         if (CloseGate == null) return;
                         if (CloseGate.Gate == null) return;
                         CloseGate.Gate.CloseDoor();
+                        break;
+                    case ActionType.NewHero:
+                        var heroName = param[0];
+                        MirGender heroGender;
+                        if (!MirGender.TryParse(param[1], out heroGender)) return;
+                        MirClass heroClass;
+                        if (!MirClass.TryParse(param[2], out heroClass)) return;
+                        if (player.Info.Heroes.Count >= player.Info.MaxHeroCount)
+                        {
+                            player.ReceiveChat("没有空的英雄位", ChatType.System);
+                            return;
+                        }
+                        var heroInfo = new HeroInfo()
+                        {
+                            CharacterIndex = player.Info.Index,
+                            Gender = heroGender,
+                            Class = heroClass,
+                            Name = heroName,
+                            Grade = (byte) (SMain.Envir.Random.Next(5) + 6),
+                        };
+                        using (var ctx = new DataContext())
+                        {
+                            ctx.HeroInfos.Add(heroInfo);
+                            ctx.SaveChanges();
+                        }
+                        player.Info.Heroes.Add(heroInfo);
+                        player.Info.Hero = heroInfo;
+                        player.ReceiveChat("你已成功召唤了一个新英雄", ChatType.System);
+                        break;
+                    case ActionType.DeleteHero:
+                        break;
+                    case ActionType.SelectHero:
+                        break;
+                    case ActionType.ReviveHero:
                         break;
                 }
             }

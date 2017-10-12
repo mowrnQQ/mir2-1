@@ -730,7 +730,8 @@ public enum ObjectType : byte
     Spell = 4,
     Monster = 5,
     Deco = 6,
-    Creature = 7
+    Creature = 7,
+    Hero = 8
 }
 
 public enum ChatType : byte
@@ -750,7 +751,8 @@ public enum ChatType : byte
     Relationship = 12,
     Mentor = 13,
     Shout2 = 14,
-    Shout3 = 15
+    Shout3 = 15,
+    System4 = 16
 }
 
 public enum ItemType : byte
@@ -813,6 +815,8 @@ public enum MirGridType : byte
     AwakenItem = 14,
     Mail = 15,
     Refine = 16,
+    HeroInventory,
+    HeroEquipment
 }
 
 public enum EquipmentSlot : byte
@@ -869,6 +873,15 @@ public enum PetMode : byte
     MoveOnly = 1,
     AttackOnly = 2,
     None = 3,
+}
+
+[Obfuscation(Feature = "renaming", Exclude = true)]
+public enum HeroMode : byte
+{
+    Attack = 0,
+    Defend = 1,
+    Follow = 2,
+    Custom = 3,
 }
 
 [Flags]
@@ -1211,7 +1224,12 @@ public enum BuffType : byte
     Defence,
     MagicDefence,
     WonderDrug,
-    Knapsack
+    Knapsack,
+    HeroWarrior,
+    HeroWizard,
+    HeroTaoist,
+    HeroAssassin,
+    HeroArcher
 }
 
 public enum DefenceType : byte
@@ -1453,6 +1471,10 @@ public enum ServerPacketIds : short
     GameShopStock,
     Rankings,
     Opendoor,
+
+    NewHeroRequest,
+    CurrentHeroIndexChange,
+    HeroInformation
 }
 
 public enum ClientPacketIds : short
@@ -1585,6 +1607,16 @@ public enum ClientPacketIds : short
     ReportIssue,
     GetRanking,
     Opendoor,
+
+    NewHero,
+    DeleteHero,
+    SelectHero,
+    ReviveHero,
+    SummonHero,
+    DismissHero,
+
+    ChangeHero,
+    ChangeHeroAttackMode
 }
 
 public enum ConquestType : byte
@@ -3909,7 +3941,7 @@ public class ClientMagic
     public byte Level, Key, Range;
     public ushort Experience;
 
-    public bool IsTempSpell;
+    public bool IsTempSpell, IsHeroMagic;
     public long CastTime, Delay;
 
     public ClientMagic()
@@ -3938,6 +3970,7 @@ public class ClientMagic
 
         Range = reader.ReadByte();
         CastTime = reader.ReadInt64();
+        IsHeroMagic = reader.ReadBoolean();
     }
 
     public void Save(BinaryWriter writer)
@@ -3962,6 +3995,7 @@ public class ClientMagic
 
         writer.Write(Range);
         writer.Write(CastTime);
+        writer.Write(IsHeroMagic);
     }
 
     public static string GetSpellName(Spell spell)
@@ -4884,6 +4918,10 @@ public abstract class Packet
                 return new C.GetRanking();
             case (short)ClientPacketIds.Opendoor:
                 return new C.Opendoor();
+            case (short)ClientPacketIds.NewHero:
+                return new C.NewHero();
+            case (short)ClientPacketIds.SummonHero:
+                return new C.SummonHero();
             default:
                 return null;
         }
@@ -4891,6 +4929,7 @@ public abstract class Packet
     }
     public static Packet GetServerPacket(short index)
     {
+        //Debug.WriteLine((ServerPacketIds)index);
         switch (index)
         {
             case (short)ServerPacketIds.Connected:
@@ -5337,6 +5376,12 @@ public abstract class Packet
                 return new S.Rankings();
             case (short)ServerPacketIds.Opendoor:
                 return new S.Opendoor();
+            case (short)ServerPacketIds.NewHeroRequest:
+                return new S.NewHeroRequest();
+            case (short)ServerPacketIds.CurrentHeroIndexChange:
+                return new S.CurrentHeroIndexChange();
+            case (short)ServerPacketIds.HeroInformation:
+                return new S.HeroInformation();
             default:
                 return null;
         }
@@ -6508,4 +6553,54 @@ public class Door
     public byte ImageIndex;
     public long LastTick;
     public Point Location;
+}
+
+public class ClientHeroInfo
+{
+    public long UniqueID;
+    public string Name;
+    public ushort Level;
+    public MirClass Class;
+    public MirGender Gender;
+    public bool Summoned;
+    public bool Sealed;
+    public bool Dead;
+    public bool Active;
+    public uint ObjectID;
+    public ushort InventoryLevel;
+
+    public ClientHeroInfo()
+    {
+    }
+
+    public ClientHeroInfo(BinaryReader reader)
+    {
+        UniqueID = reader.ReadInt64();
+        Name = reader.ReadString();
+        Level = reader.ReadUInt16();
+        Class = (MirClass)reader.ReadByte();
+        Gender = (MirGender)reader.ReadByte();
+        Summoned = reader.ReadBoolean();
+        Sealed = reader.ReadBoolean();
+        Dead = reader.ReadBoolean();
+        Active = reader.ReadBoolean();
+        ObjectID = reader.ReadUInt32();
+        InventoryLevel = reader.ReadUInt16();
+    }
+
+    public void Save(BinaryWriter writer)
+    {
+        writer.Write(UniqueID);
+        writer.Write(Name);
+        writer.Write(Level);
+        writer.Write((byte)Class);
+        writer.Write((byte)Gender);
+        writer.Write(Summoned);
+        writer.Write(Sealed);
+        writer.Write(Dead);
+        writer.Write(Active);
+        writer.Write(ObjectID);
+        writer.Write(InventoryLevel);
+    }
+
 }

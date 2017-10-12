@@ -536,7 +536,6 @@ namespace Client.MirGraphics
 
         private bool CheckImage(int index)
         {
-            Debug.WriteLine("Loading Lib File:" + _fileName);
             if (!_initialized)
             {
                 DownLoad();

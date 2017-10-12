@@ -12,6 +12,11 @@ namespace Client.MirObjects
     {
         public uint Id;
 
+        public List<ClientHeroInfo> Heros = new List<ClientHeroInfo>();
+        public UserItem[] HeroInventory = new UserItem[10];
+        public UserItem[] HeroEquipment = new UserItem[14];
+        public HeroObject Hero;
+
         public ushort HP, MaxHP, MP, MaxMP;
 
         public ushort MinAC, MaxAC,

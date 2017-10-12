@@ -187,15 +187,15 @@ namespace Server.MirDatabase
             writer.Write(CastTime);
         }
 
-        public Packet GetInfo()
+        public Packet GetInfo(bool isHeroMagic = false)
         {
             return new S.NewMagic
                 {
-                    Magic = CreateClientMagic()
+                    Magic = CreateClientMagic(isHeroMagic)
                 };
         }
 
-        public ClientMagic CreateClientMagic()
+        public ClientMagic CreateClientMagic(bool isHeroMagic = false)
         {
             return new ClientMagic
                 {
@@ -215,7 +215,8 @@ namespace Server.MirDatabase
                     IsTempSpell = IsTempSpell,
                     Delay = GetDelay(),
                     Range = Info.Range,
-                    CastTime = (CastTime != 0) && (SMain.Envir.Time > CastTime)? SMain.Envir.Time - CastTime: 0
+                    CastTime = (CastTime != 0) && (SMain.Envir.Time > CastTime)? SMain.Envir.Time - CastTime: 0,
+                    IsHeroMagic = isHeroMagic
             };
         }
 

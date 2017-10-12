@@ -52,7 +52,8 @@ namespace Server.MirObjects
             DowngradeKey = "[@DOWNGRADE]",
             ResetKey = "[@RESET]",
             PearlBuyKey = "[@PEARLBUY]",
-            BuyUsedKey = "[@BUYUSED]";
+            BuyUsedKey = "[@BUYUSED]",
+            NewHeroKey = "[@NEWHERO]";
 
 
         //public static Regex Regex = new Regex(@"[^\{\}]<.*?/(.*?)>");
@@ -938,6 +939,19 @@ namespace Server.MirObjects
 
                     player.Enqueue(new S.NPCPearlGoods { List = Goods, Rate = PriceRate(player) });
                     break;
+                case NewHeroKey:
+                    if (player.Level < 20)
+                    {
+                        player.ReceiveChat("20级以上才可以领英雄", ChatType.System);
+                        break;
+                    }
+                    if (player.Info.Heroes.Count >= player.Info.MaxHeroCount)
+                    {
+                        player.ReceiveChat("英雄已满请先删除不需要的英雄", ChatType.System);
+                        break;
+                    }
+                    player.Enqueue(new S.NewHeroRequest());
+                    break;
             }
         }
 
@@ -1390,6 +1404,21 @@ namespace Server.MirObjects
             item.BuybackExpiryDate = Envir.Now;
             BuyBack[player.Name].Add(item);
         }
+
+        public override bool IsAttackTarget(HeroObject attacker)
+        {
+            return false;
+        }
+
+        public override int Attacked(HeroObject attacker, int damage, DefenceType type = DefenceType.ACAgility, bool damageWeapon = true)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override bool IsFriendlyTarget(HeroObject ally)
+        {
+            throw new NotSupportedException();
+        }
     }
 
 
@@ -1499,6 +1528,10 @@ namespace Server.MirObjects
         AddGuildNameList,
         DelGuildNameList,
         ClearGuildNameList,
+        NewHero,
+        DeleteHero,
+        SelectHero,
+        ReviveHero,
     }
     public enum CheckType
     {

@@ -283,6 +283,17 @@ namespace Server.MirObjects
             //    player.Enqueue(GetInfo());
             //}
         }
+
+        public virtual void Add(HeroObject hero)
+        {
+            hero.Player.Enqueue(GetInfo());
+        }
+
+        public virtual void Remove(HeroObject hero)
+        {
+            hero.Player.Enqueue(new S.ObjectRemove(){ ObjectID = ObjectID});
+        }
+
         public virtual void Remove(MonsterObject monster)
         {
 
@@ -397,12 +408,15 @@ namespace Server.MirObjects
 
         public abstract bool IsAttackTarget(PlayerObject attacker);
         public abstract bool IsAttackTarget(MonsterObject attacker);
+        public abstract bool IsAttackTarget(HeroObject attacker);
         public abstract int Attacked(PlayerObject attacker, int damage, DefenceType type = DefenceType.ACAgility, bool damageWeapon = true);
+        public abstract int Attacked(HeroObject attacker, int damage, DefenceType type = DefenceType.ACAgility, bool damageWeapon = true);
         public abstract int Attacked(MonsterObject attacker, int damage, DefenceType type = DefenceType.ACAgility);
 
         public abstract int Struck(int damage, DefenceType type = DefenceType.ACAgility);
 
         public abstract bool IsFriendlyTarget(PlayerObject ally);
+        public abstract bool IsFriendlyTarget(HeroObject ally);
         public abstract bool IsFriendlyTarget(MonsterObject ally);
 
         public abstract void ReceiveChat(string text, ChatType type);
@@ -609,7 +623,7 @@ namespace Server.MirObjects
 
         public void BroadcastHealthChange()
         {
-            if (Race != ObjectType.Player && Race != ObjectType.Monster) return;
+            if (Race != ObjectType.Player && Race != ObjectType.Monster && Race != ObjectType.Hero) return;
 
             byte time = Math.Min(byte.MaxValue, (byte)Math.Max(5, (RevTime - Envir.Time) / 1000));
             Packet p = new S.ObjectHealth { ObjectID = ObjectID, Percent = PercentHealth, Expire = time };

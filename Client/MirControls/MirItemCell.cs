@@ -74,6 +74,10 @@ namespace Client.MirControls
                         return MailComposeParcelDialog.Items;
                     case MirGridType.Refine:
                         return GameScene.Refine;
+                    case MirGridType.HeroEquipment:
+                        return GameScene.User.Hero?.Equipment;
+                    case MirGridType.HeroInventory:
+                        return GameScene.User.Hero?.Inventory;
                     default:
                         throw new NotImplementedException();
                 }
@@ -268,7 +272,7 @@ namespace Client.MirControls
             amountBox.Show();
         }
         
-        public void UseItem()
+        public void UseItem(bool isHero = false)
         {
             if (Locked || GridType == MirGridType.Inspect || GridType == MirGridType.TrustMerchant || GridType == MirGridType.GuildStorage) return;
 

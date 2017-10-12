@@ -34,6 +34,7 @@ namespace Server.MirDatabase
         public bool NoDrug { get; set; }
         public bool NoPosition { get; set; }
         public bool NoFight { get; set; }
+        public bool NoHero { get; set; }
 
         public bool NoThrowItem { get; set; }
 

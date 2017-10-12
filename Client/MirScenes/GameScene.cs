@@ -19,6 +19,7 @@ using Effect = Client.MirObjects.Effect;
 
 using Client.MirScenes.Dialogs;
 using System.Drawing.Imaging;
+using System.Diagnostics;
 
 namespace Client.MirScenes
 {
@@ -112,6 +113,14 @@ namespace Client.MirScenes
 
         public ReportDialog ReportDialog;
 
+        public NewHeroDialog NewHeroDialog;
+        public ChangeHeroDialog ChangeHeroDialog;//改变英雄对话框
+        public HeroInfoDialog HeroInfoDialog;//英雄信息对话框
+        public HeroInventoryDialog HeroInventoryDialog;//英雄背包对话框
+        
+        public HeroSkillBarDialog HeroSkillBarDialog;
+        public List<Buff> HeroBuffs = new List<Buff>();//英雄增益
+
         //not added yet
         public KeyboardLayoutDialog KeyboardLayoutDialog;
 
@@ -164,6 +173,9 @@ namespace Client.MirScenes
         public List<MirImageControl> BuffList = new List<MirImageControl>();
 
         public long OutputDelay;
+
+        public int CurrentHeroIndex = 0;
+        public bool HeroSummoned = false;
 
         public GameScene()
         {
@@ -248,6 +260,10 @@ namespace Client.MirScenes
             GameShopDialog = new GameShopDialog { Parent = this, Visible = false };
 
             ReportDialog = new ReportDialog { Parent = this, Visible = false };
+            
+            HeroInventoryDialog = new HeroInventoryDialog() { Parent = this, Visible = false };
+            ChangeHeroDialog = new ChangeHeroDialog() {Parent = this, Visible = false};
+            HeroInfoDialog = new HeroInfoDialog() {Parent = this, Visible = false};
 
             //not added yet
             KeyboardLayoutDialog = new KeyboardLayoutDialog { Parent = this, Visible = false };
@@ -1611,10 +1627,45 @@ namespace Client.MirScenes
                 case (short)ServerPacketIds.Opendoor:
                     Opendoor((S.Opendoor)p);
                     break;
+                case (short)ServerPacketIds.NewHeroRequest:
+                    NewHero();
+                    break;
+                case (short)ServerPacketIds.CurrentHeroIndexChange:
+                    CurrentHeroIndexChange((S.CurrentHeroIndexChange) p);
+                    break;
+                case (short)ServerPacketIds.HeroInformation:
+                    var info = (S.HeroInformation) p;
+                    if (User.Hero == null)
+                    {
+                        HeroSummoned = true;
+                        User.Hero = new HeroObject(info.ObjectID);
+                        MainDialog.HeroAvatar.Show();
+                        MainDialog.HeroCommandBar.Show();
+                        HeroInventoryDialog.BeltBar.Show();
+                        User.Hero.Load(info);
+                        MainDialog.HeroCommandBar.ActiveAI((byte)User.Hero.Mode);
+                    }
+                    else
+                    {
+                        User.Hero.Refresh(info);
+                    }
+                    break;
                 default:
                     base.ProcessPacket(p);
                     break;
             }
+        }
+
+        public void NewHero()
+        {
+            NewHeroDialog = new NewHeroDialog() {Parent = this, Visible = true};
+        }
+
+        public void CurrentHeroIndexChange(S.CurrentHeroIndexChange packet)
+        {
+            CurrentHeroIndex = packet.HeroIndex;
+            MainDialog.HeroOpControl.Visible = packet.Index > 0;
+            MainDialog.HeroOpControl.BringToFront();
         }
 
         public void CreateBuff(Buff buff)
@@ -1870,6 +1921,12 @@ namespace Client.MirScenes
             InventoryDialog.RefreshInventory();
             foreach (SkillBarDialog Bar in SkillBarDialogs)
                 Bar.Update();
+            if (p.HeroIndex > 0)
+            {
+                MainDialog.HeroOpControl.Visible = true;
+                CurrentHeroIndex = p.HeroIndex;
+                MainDialog.HeroOpControl.BringToFront();
+            }
         }
         private void UserLocation(S.UserLocation p)
         {

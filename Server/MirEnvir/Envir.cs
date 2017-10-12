@@ -495,6 +495,7 @@ namespace Server.MirEnvir
                 if (GetMonsterInfo(Settings.FishingMonster, true) == null) return "不能启动缺少怪物: " + Settings.FishingMonster;
 
                 if (GetItemInfo(Settings.RefineOreName) == null) return "不能启动缺少物品: " + Settings.RefineOreName;
+                if (GetItemInfo(Settings.HeroOrb) == null) return "不能启动缺少物品: " + Settings.HeroOrb;
             }
 
             //add intelligent creature checks?
@@ -1796,7 +1797,7 @@ namespace Server.MirEnvir
                         GuildCount = ctx.Guilds.Count();
                         NextGuildID = (ctx.Guilds.Max(g => (int?) g.Guildindex) ?? 0);
                         AccountList = ctx.AccountInfos.ToList();
-                        CharacterList = ctx.CharacterInfos.Include(c => c.AccountInfo).ToList();
+                        CharacterList = ctx.CharacterInfos.Include(c => c.AccountInfo).Include(c => c.Heroes).ToList();
                         CharacterList.ForEach(x =>
                         {
                             var Inventoryitems =
@@ -3255,7 +3256,18 @@ namespace Server.MirEnvir
         }
         public void CreateNPCInfo()
         {
-            NPCInfoList.Add(new NPCInfo { Index = ++NPCIndex });
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    var newNpc = new NPCInfo();
+                    ctx.NpcInfos.Add(newNpc);
+                    ctx.SaveChanges();
+                    NPCInfoList.Add(newNpc);
+                }
+            }
+            else
+                NPCInfoList.Add(new NPCInfo { Index = ++NPCIndex });
         }
         public void CreateQuestInfo()
         {

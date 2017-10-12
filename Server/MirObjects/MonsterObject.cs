@@ -1814,6 +1814,39 @@ namespace Server.MirObjects
                     return true;
             }
         }
+
+        public override bool IsAttackTarget(HeroObject attacker)
+        {
+            if (attacker == null || attacker.Node == null) return false;
+            if (Dead) return false;
+            if (Master == null) return true;
+            if (attacker.AMode == AttackMode.Peace) return false;
+            if (Master == attacker.Player) return attacker.AMode == AttackMode.All;
+            if (Master.Race == ObjectType.Player && (attacker.InSafeZone || InSafeZone)) return false;
+
+            switch (attacker.AMode)
+            {
+                case AttackMode.Group:
+                    return Master.GroupMembers == null || !Master.GroupMembers.Contains(attacker.Player);
+                case AttackMode.Guild:
+                    {
+                        if (!(Master is PlayerObject)) return false;
+                        PlayerObject master = (PlayerObject)Master;
+                        return master.MyGuild == null || master.MyGuild != attacker.Player.MyGuild;
+                    }
+                case AttackMode.EnemyGuild:
+                    {
+                        if (!(Master is PlayerObject)) return false;
+                        PlayerObject master = (PlayerObject)Master;
+                        return (master.MyGuild != null && attacker.Player.MyGuild != null) && master.MyGuild.IsEnemy(attacker.Player.MyGuild);
+                    }
+                case AttackMode.RedBrown:
+                    return Master.PKPoints >= 200 || Envir.Time < Master.BrownTime;
+                default:
+                    return true;
+            }
+        }
+
         public override bool IsAttackTarget(MonsterObject attacker)
         {
             if (attacker == null || attacker.Node == null) return false;
@@ -1890,6 +1923,24 @@ namespace Server.MirObjects
 
             return Envir.Time < attacker.RageTime;
         }
+        public override bool IsFriendlyTarget(HeroObject ally)
+        {
+            if (Master == null) return false;
+            if (Master == ally.Player) return true;
+
+            switch (ally.Player.AMode)
+            {
+                case AttackMode.Group:
+                    return Master.GroupMembers != null && Master.GroupMembers.Contains(ally.Player);
+                case AttackMode.Guild:
+                    return false;
+                case AttackMode.EnemyGuild:
+                    return true;
+                case AttackMode.RedBrown:
+                    return Master.PKPoints < 200 & Envir.Time > Master.BrownTime;
+            }
+            return true;
+        }
         public override bool IsFriendlyTarget(PlayerObject ally)
         {
             if (Master == null) return false;
@@ -1916,6 +1967,170 @@ namespace Server.MirObjects
             if (ally.Master != null) return false;
 
             return true;
+        }
+
+        public override int Attacked(HeroObject attacker, int damage, DefenceType type = DefenceType.ACAgility, bool damageWeapon = true)
+        {
+            if (Target == null && attacker.IsAttackTarget(this))
+            {
+                Target = attacker;
+            }
+
+            int armour = 0;
+
+            switch (type)
+            {
+                case DefenceType.ACAgility:
+                    if (Envir.Random.Next(Agility + 1) > attacker.Accuracy)
+                    {
+                        BroadcastDamageIndicator(DamageType.Miss);
+                        return 0;
+                    }
+                    armour = GetDefencePower(MinAC, MaxAC);
+                    break;
+                case DefenceType.AC:
+                    armour = GetDefencePower(MinAC, MaxAC);
+                    break;
+                case DefenceType.MACAgility:
+                    if (Envir.Random.Next(Agility + 1) > attacker.Accuracy)
+                    {
+                        BroadcastDamageIndicator(DamageType.Miss);
+                        return 0;
+                    }
+                    armour = GetDefencePower(MinMAC, MaxMAC);
+                    break;
+                case DefenceType.MAC:
+                    armour = GetDefencePower(MinMAC, MaxMAC);
+                    break;
+                case DefenceType.Agility:
+                    if (Envir.Random.Next(Agility + 1) > attacker.Accuracy)
+                    {
+                        BroadcastDamageIndicator(DamageType.Miss);
+                        return 0;
+                    }
+                    break;
+            }
+
+            armour = (int)Math.Max(int.MinValue, (Math.Min(int.MaxValue, (decimal)(armour * ArmourRate))));
+            damage = (int)Math.Max(int.MinValue, (Math.Min(int.MaxValue, (decimal)(damage * DamageRate))));
+
+            if (damageWeapon)
+                attacker.DamageWeapon();
+            damage += attacker.AttackBonus;
+
+            if (armour >= damage)
+            {
+                BroadcastDamageIndicator(DamageType.Miss);
+                return 0;
+            }
+
+            if ((attacker.CriticalRate * Settings.CriticalRateWeight) > Envir.Random.Next(100))
+            {
+                Broadcast(new S.ObjectEffect { ObjectID = ObjectID, Effect = SpellEffect.Critical });
+                damage = Math.Min(int.MaxValue, damage + (int)Math.Floor(damage * (((double)attacker.CriticalDamage / (double)Settings.CriticalDamageWeight) * 10)));
+                BroadcastDamageIndicator(DamageType.Critical);
+            }
+
+            if (attacker.LifeOnHit > 0)
+                attacker.ChangeHP(attacker.LifeOnHit);
+
+            if (Target != this && attacker.IsAttackTarget(this))
+            {
+                if (attacker.Info.MentalState == 2)
+                {
+                    if (Functions.MaxDistance(CurrentLocation, attacker.CurrentLocation) < (8 - attacker.Info.MentalStateLvl))
+                        Target = attacker;
+                }
+                else
+                    Target = attacker;
+            }
+
+            if (BindingShotCenter) ReleaseBindingShot();
+            ShockTime = 0;
+
+            for (int i = PoisonList.Count - 1; i >= 0; i--)
+            {
+                if (PoisonList[i].PType != PoisonType.LRParalysis) continue;
+
+                PoisonList.RemoveAt(i);
+                OperateTime = 0;
+            }
+
+            if (Master != null && Master != attacker)
+                if (Envir.Time > Master.BrownTime && Master.PKPoints < 200)
+                    attacker.BrownTime = Envir.Time + Settings.Minute;
+
+            if (EXPOwner == null || EXPOwner.Dead)
+                EXPOwner = attacker;
+
+            if (EXPOwner == attacker)
+                EXPOwnerTime = Envir.Time + EXPOwnerDelay;
+
+            ushort LevelOffset = (ushort)(Level > attacker.Level ? 0 : Math.Min(10, attacker.Level - Level));
+
+            if (attacker.HasParalysisRing && type != DefenceType.MAC && type != DefenceType.MACAgility && 1 == Envir.Random.Next(1, 15))
+            {
+                ApplyPoison(new Poison { PType = PoisonType.Paralysis, Duration = 5, TickSpeed = 1000 }, attacker);
+            }
+
+            if (attacker.Freezing > 0 && type != DefenceType.MAC && type != DefenceType.MACAgility)
+            {
+                if ((Envir.Random.Next(Settings.FreezingAttackWeight) < attacker.Freezing) && (Envir.Random.Next(LevelOffset) == 0))
+                    ApplyPoison(new Poison { PType = PoisonType.Slow, Duration = Math.Min(10, (3 + Envir.Random.Next(attacker.Freezing))), TickSpeed = 1000 }, attacker);
+            }
+
+            if (attacker.PoisonAttack > 0 && type != DefenceType.MAC && type != DefenceType.MACAgility)
+            {
+                if ((Envir.Random.Next(Settings.PoisonAttackWeight) < attacker.PoisonAttack) && (Envir.Random.Next(LevelOffset) == 0))
+                    ApplyPoison(new Poison { PType = PoisonType.Green, Duration = 5, TickSpeed = 1000, Value = Math.Min(10, 3 + Envir.Random.Next(attacker.PoisonAttack)) }, attacker);
+            }
+
+            Broadcast(new S.ObjectStruck { ObjectID = ObjectID, AttackerID = attacker.ObjectID, Direction = Direction, Location = CurrentLocation });
+
+            if (attacker.HpDrainRate > 0)
+            {
+                attacker.HpDrain += Math.Max(0, ((float)(damage - armour) / 100) * attacker.HpDrainRate);
+                if (attacker.HpDrain > 2)
+                {
+                    int HpGain = (int)Math.Floor(attacker.HpDrain);
+                    attacker.ChangeHP(HpGain);
+                    attacker.HpDrain -= HpGain;
+
+                }
+            }
+
+            attacker.GatherElement();
+
+            if (attacker.Player.Info.Mentor != 0 && attacker.Player.Info.isMentor)
+            {
+                Buff buff = attacker.Buffs.Where(e => e.Type == BuffType.Mentor).FirstOrDefault();
+                if (buff != null)
+                {
+                    CharacterInfo Mentee = Envir.GetCharacterInfo(attacker.Player.Info.Mentor);
+                    PlayerObject player = Envir.GetPlayer(Mentee.Name);
+                    if (player.CurrentMap == attacker.CurrentMap && Functions.InRange(player.CurrentLocation, attacker.CurrentLocation, Globals.DataRange) && !player.Dead)
+                    {
+                        damage += ((damage / 100) * Settings.MentorDamageBoost);
+                    }
+                }
+            }
+
+            if (Master != null && Master != attacker && Master.Race == ObjectType.Player && Envir.Time > Master.BrownTime && Master.PKPoints < 200 && !((PlayerObject)Master).AtWar(attacker.Player))
+            {
+                attacker.BrownTime = Envir.Time + Settings.Minute;
+            }
+
+            for (int i = 0; i < attacker.Pets.Count; i++)
+            {
+                MonsterObject ob = attacker.Pets[i];
+
+                if (IsAttackTarget(ob) && (ob.Target == null)) ob.Target = this;
+            }
+
+            BroadcastDamageIndicator(DamageType.Hit, armour - damage);
+
+            ChangeHP(armour - damage);
+            return damage - armour;
         }
 
         public override int Attacked(PlayerObject attacker, int damage, DefenceType type = DefenceType.ACAgility, bool damageWeapon = true)

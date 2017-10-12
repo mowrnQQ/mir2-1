@@ -191,6 +191,11 @@ namespace Server.MirDatabase
         [NotMapped]
         public int[] Rank = new int[2];//dont save this in db!(and dont send it to clients :p)
 
+        public byte MaxHeroCount { get; set; } = 2;
+        public int CurrentHeroIndex { get; set; }
+        public HeroInfo Hero;
+        public ICollection<HeroInfo> Heroes { get; set; } = new List<HeroInfo>();
+
         public CharacterInfo()
         {
         }

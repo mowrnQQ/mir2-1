@@ -180,6 +180,7 @@
     <Compile Include="MirObjects\DecoObject.cs" />
     <Compile Include="MirObjects\Effect.cs" />
     <Compile Include="MirObjects\Frames.cs" />
+    <Compile Include="MirObjects\HeroObject.cs" />
     <Compile Include="MirObjects\ItemObject.cs" />
     <Compile Include="MirObjects\MapCode.cs" />
     <Compile Include="MirObjects\MapObject.cs" />
@@ -196,12 +197,14 @@
     <Compile Include="MirScenes\Dialogs\GroupDialog.cs" />
     <Compile Include="MirScenes\Dialogs\GuildDialog.cs" />
     <Compile Include="MirScenes\Dialogs\HelpDialog.cs" />
+    <Compile Include="MirScenes\Dialogs\HeroDialog.cs" />
     <Compile Include="MirScenes\Dialogs\IntelligentCreatureDialogs.cs" />
     <Compile Include="MirScenes\Dialogs\KeyboardLayoutDialog.cs" />
     <Compile Include="MirScenes\Dialogs\MailDialogs.cs" />
     <Compile Include="MirScenes\Dialogs\MainDialogs.cs" />
     <Compile Include="MirScenes\Dialogs\MentorDialog.cs" />
     <Compile Include="MirScenes\Dialogs\MountDialog.cs" />
+    <Compile Include="MirScenes\Dialogs\NewHeroDialog.cs" />
     <Compile Include="MirScenes\Dialogs\NPCDialogs.cs" />
     <Compile Include="MirScenes\Dialogs\RankingDialog.cs" />
     <Compile Include="MirScenes\Dialogs\RelationshipDialog.cs" />

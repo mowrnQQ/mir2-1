@@ -36,6 +36,10 @@ namespace Client.MirScenes.Dialogs
         public MirControl HealthOrb;
         public MirLabel HealthLabel, ManaLabel, TopLabel, BottomLabel, LevelLabel, CharacterName, ExperienceLabel, GoldLabel, WeightLabel, SpaceLabel, AModeLabel, PModeLabel, SModeLabel, PingLabel;
 
+        public HeroOPControl HeroOpControl;
+        public HeroAvatarControl HeroAvatar;
+        public HeroCommandBar HeroCommandBar;
+
         public bool HPOnly
         {
             get { return User != null && User.Class == MirClass.Warrior && User.Level < 26; }
@@ -360,6 +364,9 @@ namespace Client.MirScenes.Dialogs
                 Location = new Point(Settings.Resolution != 800 ? 899 : 675, Settings.Resolution != 800 ? -463 : -295),
             };
 
+            HeroOpControl = new HeroOPControl(this) { Visible = false };
+            HeroAvatar = new HeroAvatarControl(this){Visible = false};
+            HeroCommandBar = new HeroCommandBar(this) {Visible = false};
         }
 
         public void Show()
@@ -462,6 +469,8 @@ namespace Client.MirScenes.Dialogs
             CharacterName.Text = User.Name;
             SpaceLabel.Text = User.Inventory.Count(t => t == null).ToString();
             WeightLabel.Text = (MapObject.User.MaxBagWeight - MapObject.User.CurrentBagWeight).ToString();
+
+            HeroAvatar.RefreashInfo();
         }
 
         private void Label_SizeChanged(object sender, EventArgs e)

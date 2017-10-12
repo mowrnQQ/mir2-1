@@ -184,8 +184,17 @@
     <Compile Include="Migrations\201702080831162_RecreateGuildBuffTable.Designer.cs">
       <DependentUpon>201702080831162_RecreateGuildBuffTable.cs</DependentUpon>
     </Compile>
+    <Compile Include="Migrations\201704270735412_AddHero.cs" />
+    <Compile Include="Migrations\201704270735412_AddHero.Designer.cs">
+      <DependentUpon>201704270735412_AddHero.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\201705090654132_AddHeroAttr.cs" />
+    <Compile Include="Migrations\201705090654132_AddHeroAttr.Designer.cs">
+      <DependentUpon>201705090654132_AddHeroAttr.cs</DependentUpon>
+    </Compile>
     <Compile Include="Migrations\Configuration.cs" />
     <Compile Include="MirDatabase\DataContext.cs" />
+    <Compile Include="MirDatabase\HeroInfo.cs" />
     <Compile Include="MirDatabase\MailInfo.cs" />
     <Compile Include="MirDatabase\ConquestInfo.cs" />
     <Compile Include="MirEnvir\Reporting.cs" />
@@ -342,6 +351,7 @@
     <Compile Include="MirObjects\DecoObject.cs" />
     <Compile Include="MirObjects\DelayedAction.cs" />
     <Compile Include="MirObjects\GuildObject.cs" />
+    <Compile Include="MirObjects\HeroObject.cs" />
     <Compile Include="MirObjects\IntelligentCreatureObject.cs" />
     <Compile Include="MirObjects\ItemObject.cs" />
     <Compile Include="MirObjects\MapObject.cs" />
@@ -546,6 +556,12 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Migrations\201702080831162_RecreateGuildBuffTable.resx">
       <DependentUpon>201702080831162_RecreateGuildBuffTable.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\201704270735412_AddHero.resx">
+      <DependentUpon>201704270735412_AddHero.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\201705090654132_AddHeroAttr.resx">
+      <DependentUpon>201705090654132_AddHeroAttr.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="MirForms\Account\AccountInfoForm.resx">
       <DependentUpon>AccountInfoForm.cs</DependentUpon>

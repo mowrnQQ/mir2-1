@@ -517,7 +517,7 @@ namespace Client.MirScenes
             base.Dispose(disposing);
         }
         #endregion
-        public sealed class NewCharacterDialog : MirImageControl
+        public class NewCharacterDialog : MirImageControl
         {
             private static readonly Regex Reg = new Regex(@"^.{" + Globals.MinCharacterNameLength + "," + Globals.MaxCharacterNameLength + "}$");
 
@@ -538,8 +538,8 @@ namespace Client.MirScenes
 
             public MirLabel Description;
 
-            private MirClass _class;
-            private MirGender _gender;
+            protected MirClass _class;
+            protected MirGender _gender;
 
             #region Descriptions
             public const string WarriorDescription =

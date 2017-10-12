@@ -579,6 +579,13 @@ namespace Server.MirNetwork
                 case (short)ClientPacketIds.Opendoor:
                     Opendoor((C.Opendoor)p);
                     break;
+                case (short)ClientPacketIds.NewHero:
+                    var packet = (C.NewHero) p;
+                    Player.NewHero(packet.Name, packet.Gender, packet.Class);
+                    break;
+                case (short)ClientPacketIds.SummonHero:
+                    Player.SummonHero();
+                    break;
                 default:
                     SMain.Enqueue(string.Format("收到无效数据包. Index : {0}", p.Index));
                     break;

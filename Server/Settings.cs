@@ -146,8 +146,9 @@ namespace Server
                              SnakesName = "CharmedSnake";
 
         public static string HealRing = "Healing",
-                             FireRing = "FireBall",
-                             ParalysisRing = "Paralysis";
+                            FireRing = "FireBall",
+                            ParalysisRing = "Paralysis",
+                            HeroOrb = "HeroOrb";
 
         public static string PKTownMapName = "3";
         public static int PKTownPositionX = 848,
@@ -409,6 +410,9 @@ namespace Server
                 IntelligentCreatureNameList[i] = Reader.ReadString("IntelligentCreatures", "Creature" + i.ToString() + "Name", IntelligentCreatureNameList[i]);
             CreatureBlackStoneName = Reader.ReadString("IntelligentCreatures", "CreatureBlackStoneName", CreatureBlackStoneName);
 
+            //Hero
+            HeroOrb = Reader.ReadString("Hero", "HeroOrb", HeroOrb);
+
             if (!Directory.Exists(EnvirPath))
                 Directory.CreateDirectory(EnvirPath);
             if (!Directory.Exists(ConfigPath))
@@ -610,6 +614,9 @@ namespace Server
             for (int i = 0; i < IntelligentCreatureNameList.Length; i++)
                 Reader.Write("IntelligentCreatures", "Creature" + i.ToString() + "Name", IntelligentCreatureNameList[i]);
             Reader.Write("IntelligentCreatures", "CreatureBlackStoneName", CreatureBlackStoneName);
+
+            //HeroOrb
+            Reader.Write("Hero", "HeroOrb", HeroOrb);
 
             SaveAwakeAttribute();
         }

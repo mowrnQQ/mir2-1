@@ -11,6 +11,7 @@ using Server.MirNetwork;
 using S = ServerPackets;
 using System.Text.RegularExpressions;
 using Server.MirObjects.Monsters;
+using System.Diagnostics;
 
 namespace Server.MirObjects
 {
@@ -243,6 +244,8 @@ namespace Server.MirObjects
             }
         }
 
+        public HeroObject Hero;
+
         public uint NPCID;
         public NPCPage NPCPage;
         public Dictionary<NPCSegment, bool> NPCSuccess = new Dictionary<NPCSegment, bool>();
@@ -329,6 +332,8 @@ namespace Server.MirObjects
         }
 
         public byte AttackBonus, MineRate, GemRate, FishRate, CraftRate, SkillNeckBoost;
+
+        public long HeroSummonTime = 0;
 
         public PlayerObject(CharacterInfo info, MirConnection connection)
         {
@@ -428,6 +433,12 @@ namespace Server.MirObjects
             Envir.Players.Remove(this);
             CurrentMap.RemoveObject(this);
             Despawn();
+
+            if (Hero != null)
+            {
+                Hero.CurrentMap.RemoveObject(Hero);
+                Hero.Despawn();
+            }
 
             if (GroupMembers != null)
             {
@@ -1817,8 +1828,8 @@ namespace Server.MirObjects
                     {
                         using (var ctx = new DataContext())
                         {
-                            ctx.UserItems.Attach(item);
-                            ctx.Entry(item).State = EntityState.Added;
+                            //ctx.UserItems.Attach(item);
+                            //ctx.Entry(item).State = EntityState.Added;
                             var dbIvt = ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(i).FirstOrDefault();
                             if (dbIvt != null)
                             {
@@ -2409,7 +2420,9 @@ namespace Server.MirObjects
                 QuestInventory = new UserItem[Info.QuestInventory.Length],
                 Gold = Account.Gold,
                 Credit = Account.Credit,
-                AddedStorage = Account.Storage.Length > 80
+                AddedStorage = Account.Storage.Length > 80,
+                HeroIndex =  Info.CurrentHeroIndex,
+                HeroSummoned = false
             };
 
             //Copy this method to prevent modification before sending packet information.
@@ -5275,6 +5288,12 @@ namespace Server.MirObjects
                                 MyGuild.Conquest.FlagList[i].UpdateColour();
                             }
                         }
+                        break;
+                    case "SUMMONHERO":
+                        SummonHero();
+                        break;
+                    case "DISMISSHERO":
+                        DismissHero();
                         break;
                     default:
                         break;
@@ -9912,6 +9931,32 @@ namespace Server.MirObjects
 
             return true;
         }
+
+        public override bool IsAttackTarget(HeroObject attacker)
+        {
+            if (attacker == null || attacker.Node == null) return false;
+            if (Dead || InSafeZone || attacker.InSafeZone) return false;
+            if (CurrentMap.Info.NoFight) return false;
+
+            switch (attacker.Player.AMode)
+            {
+                case AttackMode.All:
+                    return true;
+                case AttackMode.Group:
+                    return GroupMembers == null || !GroupMembers.Contains(attacker.Player);
+                case AttackMode.Guild:
+                    return MyGuild == null || MyGuild != attacker.Player.MyGuild;
+                case AttackMode.EnemyGuild:
+                    return MyGuild != null && MyGuild.IsEnemy(attacker.Player.MyGuild);
+                case AttackMode.Peace:
+                    return false;
+                case AttackMode.RedBrown:
+                    return PKPoints >= 200 || Envir.Time < BrownTime;
+            }
+
+            return true;
+        }
+
         public override bool IsAttackTarget(MonsterObject attacker)
         {
             if (attacker == null || attacker.Node == null) return false;
@@ -9972,6 +10017,23 @@ namespace Server.MirObjects
             }
             return true;
         }
+        public override bool IsFriendlyTarget(HeroObject ally)
+        {
+            if (ally.Player == this) return true;
+
+            switch (ally.Player.AMode)
+            {
+                case AttackMode.Group:
+                    return GroupMembers != null && GroupMembers.Contains(ally.Player);
+                case AttackMode.RedBrown:
+                    return PKPoints < 200 & Envir.Time > BrownTime;
+                case AttackMode.Guild:
+                    return MyGuild != null && MyGuild == ally.Player.MyGuild;
+                case AttackMode.EnemyGuild:
+                    return true;
+            }
+            return true;
+        }
         public override bool IsFriendlyTarget(MonsterObject ally)
         {
             if (ally.Race != ObjectType.Monster) return false;
@@ -9987,6 +10049,186 @@ namespace Server.MirObjects
             }
 
             return true;
+        }
+        public override int Attacked(HeroObject attacker, int damage, DefenceType type = DefenceType.ACAgility, bool damageWeapon = true)
+        {
+            int armour = 0;
+
+            for (int i = 0; i < Buffs.Count; i++)
+            {
+                switch (Buffs[i].Type)
+                {
+                    case BuffType.MoonLight:
+                    case BuffType.DarkBody:
+                        Buffs[i].ExpireTime = 0;
+                        break;
+                    case BuffType.EnergyShield:
+                        int rate = Buffs[i].Values[0];
+
+                        if (Envir.Random.Next(rate) == 0)
+                        {
+                            if (HP + ((ushort)Buffs[i].Values[1]) >= MaxHP)
+                                SetHP(MaxHP);
+                            else
+                                ChangeHP(Buffs[i].Values[1]);
+                        }
+                        break;
+                }
+            }
+
+            switch (type)
+            {
+                case DefenceType.ACAgility:
+                    if (Envir.Random.Next(Agility + 1) > attacker.Accuracy)
+                    {
+                        BroadcastDamageIndicator(DamageType.Miss);
+                        return 0;
+                    }
+                    armour = GetDefencePower(MinAC, MaxAC);
+                    break;
+                case DefenceType.AC:
+                    armour = GetDefencePower(MinAC, MaxAC);
+                    break;
+                case DefenceType.MACAgility:
+                    if ((Settings.PvpCanResistMagic) && (Envir.Random.Next(Settings.MagicResistWeight) < MagicResist))
+                    {
+                        BroadcastDamageIndicator(DamageType.Miss);
+                        return 0;
+                    }
+                    if (Envir.Random.Next(Agility + 1) > attacker.Accuracy)
+                    {
+                        BroadcastDamageIndicator(DamageType.Miss);
+                        return 0;
+                    }
+                    armour = GetDefencePower(MinMAC, MaxMAC);
+                    break;
+                case DefenceType.MAC:
+                    if ((Settings.PvpCanResistMagic) && (Envir.Random.Next(Settings.MagicResistWeight) < MagicResist))
+                    {
+                        BroadcastDamageIndicator(DamageType.Miss);
+                        return 0;
+                    }
+                    armour = GetDefencePower(MinMAC, MaxMAC);
+                    break;
+                case DefenceType.Agility:
+                    if (Envir.Random.Next(Agility + 1) > attacker.Accuracy)
+                    {
+                        BroadcastDamageIndicator(DamageType.Miss);
+                        return 0;
+                    }
+                    break;
+            }
+
+            armour = (int)Math.Max(int.MinValue, (Math.Min(int.MaxValue, (decimal)(armour * ArmourRate))));
+            damage = (int)Math.Max(int.MinValue, (Math.Min(int.MaxValue, (decimal)(damage * DamageRate))));
+
+            if (damageWeapon)
+                attacker.DamageWeapon();
+
+            damage += attacker.AttackBonus;
+
+            if (Envir.Random.Next(100) < Reflect)
+            {
+                if (attacker.IsAttackTarget(this))
+                {
+                    attacker.Attacked(this, damage, type, false);
+                    CurrentMap.Broadcast(new S.ObjectEffect { ObjectID = ObjectID, Effect = SpellEffect.Reflect }, CurrentLocation);
+                }
+                return 0;
+            }
+
+            if (MagicShield)
+                damage -= damage * (MagicShieldLv + 2) / 10;
+
+            if (ElementalBarrier)
+                damage -= damage * (ElementalBarrierLv + 1) / 10;
+
+            if (armour >= damage)
+            {
+                BroadcastDamageIndicator(DamageType.Miss);
+                return 0;
+            }
+
+            if ((attacker.CriticalRate * Settings.CriticalRateWeight) > Envir.Random.Next(100))
+            {
+                CurrentMap.Broadcast(new S.ObjectEffect { ObjectID = ObjectID, Effect = SpellEffect.Critical }, CurrentLocation);
+                damage = Math.Min(int.MaxValue, damage + (int)Math.Floor(damage * (((double)attacker.CriticalDamage / (double)Settings.CriticalDamageWeight) * 10)));
+                BroadcastDamageIndicator(DamageType.Critical);
+            }
+
+            if (MagicShield)
+            {
+                MagicShieldTime -= (damage - armour) * 60;
+                AddBuff(new Buff { Type = BuffType.MagicShield, Caster = this, ExpireTime = MagicShieldTime, Values = new int[] { MagicShieldLv } });
+            }
+
+            ElementalBarrierTime -= (damage - armour) * 60;
+
+            if (attacker.LifeOnHit > 0)
+                attacker.ChangeHP(attacker.LifeOnHit);
+
+            if (attacker.HpDrainRate > 0)
+            {
+                attacker.HpDrain += Math.Max(0, ((float)(damage - armour) / 100) * attacker.HpDrainRate);
+                if (attacker.HpDrain > 2)
+                {
+                    int HpGain = (int)Math.Floor(attacker.HpDrain);
+                    attacker.ChangeHP(HpGain);
+                    attacker.HpDrain -= HpGain;
+
+                }
+            }
+
+            for (int i = PoisonList.Count - 1; i >= 0; i--)
+            {
+                if (PoisonList[i].PType != PoisonType.LRParalysis) continue;
+
+                PoisonList.RemoveAt(i);
+                OperateTime = 0;
+            }
+
+
+            LastHitter = attacker;
+            LastHitTime = Envir.Time + 10000;
+            RegenTime = Envir.Time + RegenDelay;
+            LogTime = Envir.Time + Globals.LogDelay;
+
+            if (Envir.Time > BrownTime && PKPoints < 200 && !AtWar(attacker.Player))
+                attacker.BrownTime = Envir.Time + Settings.Minute;
+
+            ushort LevelOffset = (byte)(Level > attacker.Level ? 0 : Math.Min(10, attacker.Level - Level));
+
+            if (attacker.HasParalysisRing && type != DefenceType.MAC && type != DefenceType.MACAgility && 1 == Envir.Random.Next(1, 15))
+            {
+                ApplyPoison(new Poison { PType = PoisonType.Paralysis, Duration = 5, TickSpeed = 1000 }, attacker);
+            }
+            if ((attacker.Freezing > 0) && (Settings.PvpCanFreeze) && type != DefenceType.MAC && type != DefenceType.MACAgility)
+            {
+                if ((Envir.Random.Next(Settings.FreezingAttackWeight) < attacker.Freezing) && (Envir.Random.Next(LevelOffset) == 0))
+                    ApplyPoison(new Poison { PType = PoisonType.Slow, Duration = Math.Min(10, (3 + Envir.Random.Next(attacker.Freezing))), TickSpeed = 1000 }, attacker);
+            }
+
+            if (attacker.PoisonAttack > 0 && type != DefenceType.MAC && type != DefenceType.MACAgility)
+            {
+                if ((Envir.Random.Next(Settings.PoisonAttackWeight) < attacker.PoisonAttack) && (Envir.Random.Next(LevelOffset) == 0))
+                    ApplyPoison(new Poison { PType = PoisonType.Green, Duration = 5, TickSpeed = 1000, Value = Math.Min(10, 3 + Envir.Random.Next(attacker.PoisonAttack)) }, attacker);
+            }
+
+            attacker.GatherElement();
+
+            DamageDura();
+            ActiveBlizzard = false;
+            ActiveReincarnation = false;
+
+            CounterAttackCast(GetMagic(Spell.天务), LastHitter);
+
+            Enqueue(new S.Struck { AttackerID = attacker.ObjectID });
+            Broadcast(new S.ObjectStruck { ObjectID = ObjectID, AttackerID = attacker.ObjectID, Direction = Direction, Location = CurrentLocation });
+
+            BroadcastDamageIndicator(DamageType.Hit, armour - damage);
+
+            ChangeHP(armour - damage);
+            return damage - armour;
         }
         public override int Attacked(PlayerObject attacker, int damage, DefenceType type = DefenceType.ACAgility, bool damageWeapon = true)
         {
@@ -11590,6 +11832,29 @@ namespace Server.MirObjects
                                 if (_item.Count < 1) _item.Count = 1;
                                 GainItem(_item);
                                 break;
+                            }
+                            break;
+                        case 13: //HeroOrb
+                            if (Info.Heroes.Count >= Info.MaxHeroCount)
+                            {
+                                ReceiveChat("没有空的英雄位", ChatType.System);
+                                return;
+                            }
+                            using (var ctx = new DataContext())
+                            {
+                                var Hero = ctx.HeroInfos.FirstOrDefault(h => h.HeroOrbId == item.UniqueID);
+                                if (Hero != null)
+                                {
+                                    Hero.CharacterIndex = Info.Index;
+                                    Info.Heroes.Add(Hero);
+                                    Info.CurrentHeroIndex = Hero.Index;
+                                    ctx.CharacterInfos.Attach(Info);
+                                    ctx.Entry(Info).State = EntityState.Modified;
+                                    ctx.SaveChanges();
+                                    ReceiveChat("你已成功召唤了一个新英雄", ChatType.System);
+                                }
+                                Enqueue(new S.CurrentHeroIndexChange() { HeroIndex = Hero.Index });
+                                Info.CurrentHeroIndex = Hero.Index;
                             }
                             break;
                     }
@@ -20862,6 +21127,119 @@ namespace Server.MirObjects
                 Broadcast(new S.Opendoor() { DoorIndex = Doorindex });
             }
         }
+
+        #region Hero
+
+        public void NewHero(string name, MirGender gender, MirClass _class)
+        {
+            if (Info.Inventory.Where(ivt => ivt == null).Count() == 0)
+            {
+                ReceiveChat("请先清理背包", ChatType.System);
+                return;
+            }
+            if (Level < 20)
+            {
+                ReceiveChat("20级以上才可以领英雄", ChatType.System);
+                return;
+            }
+            if (Info.Heroes.Count >= Info.MaxHeroCount)
+            {
+                ReceiveChat("英雄已满请先删除不需要的英雄", ChatType.System);
+                return;
+            }
+            var heroOrbInfo = Envir.GetItemInfo(Settings.HeroOrb);
+            var orb = Envir.CreateFreshItem(heroOrbInfo);
+            var heroInfo = new HeroInfo()
+            {
+                CharacterIndex = Info.Index,
+                Gender = gender,
+                Class = _class,
+                Name = name,
+                Grade = (byte)(SMain.Envir.Random.Next(5) + 6),
+                Level = 1,
+                Hair = (byte)SMain.Envir.Random.Next(0, 9),
+                HeroOrbId = orb.UniqueID
+            };
+            
+            using (var ctx = new DataContext())
+            {
+                ctx.HeroInfos.Add(heroInfo);
+                ctx.SaveChanges();
+                foreach (var item in heroInfo.Equipment)
+                {
+                    ctx.HeroEquipmentItems.Add(new HeroEquipmentItem() {HeroIndex = heroInfo.Index});
+                }
+                foreach (var item in heroInfo.Inventory)
+                {
+                    ctx.HeroInventoryItems.Add(new HeroInventoryItem() {HeroIndex = heroInfo.Index});
+                }
+                ctx.SaveChanges();
+            }
+            //Info.Heroes.Add(heroInfo);
+            //Info.Hero = heroInfo;
+            
+            GainItem(orb);
+            ReceiveChat("你已成功召唤了一个新英雄", ChatType.System);
+        }
+
+        public void SummonHero()
+        {
+            if (Info.Heroes.Count == 0)
+            {
+                ReceiveChat("你没有英雄", ChatType.System);
+                return;
+            }
+            if (Hero != null)
+            {
+                ReceiveChat("你已经召唤了英雄", ChatType.System);
+                return;
+            }
+            if (HeroSummonTime + 30000 > Envir.Time)
+            {
+                ReceiveChat("目前不能召唤英雄", ChatType.System);
+                return;
+            }
+            Map temp = Envir.GetMap(CurrentMapIndex);
+            if (temp.Info.NoHero)
+            {
+                ReceiveChat("当前地图不允许召唤英雄", ChatType.System);
+                return;
+            }
+            HeroSummonTime = Envir.Time;
+            var heroInfo = Info.Heroes.FirstOrDefault(h => h.Index == Info.CurrentHeroIndex);
+            if (heroInfo != null)
+            {
+                Hero = new HeroObject(this){Info = heroInfo, CurrentLocation = Front};
+                using (var ctx = new DataContext())
+                {
+                    var inventory = ctx.HeroInventoryItems.Include(i => i.UserItem).Include(i => i.UserItem.Info).Where(i => i.HeroIndex == heroInfo.Index).ToList();
+                    Hero.Info.Inventory = inventory.Select(i => i.UserItem).ToArray();
+                    var equipment = ctx.HeroEquipmentItems.Include(i => i.UserItem).Include(i => i.UserItem.Info).Where(i => i.HeroIndex == heroInfo.Index).ToList();
+                    Hero.Info.Equipment = equipment.Select(i => i.UserItem).ToArray();
+                }
+                Hero.RefreshStats();
+                CurrentMap.AddObject(Hero);
+                Hero.Spawned();
+            }
+        }
+
+        public void DismissHero()
+        {
+            if (Hero != null)
+            {
+                if (HeroSummonTime + 30000 > Envir.Time)
+                {
+                    ReceiveChat("目前不能解散英雄", ChatType.System);
+                    return;
+                }
+                HeroSummonTime = Envir.Time;
+                CurrentMap.RemoveObject(Hero);
+                Hero.Despawn();
+                Hero = null;
+            }
+        }
+
+        #endregion
     }
 }
 

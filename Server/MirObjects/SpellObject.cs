@@ -408,5 +408,20 @@ namespace Server.MirObjects
                 }
             }
         }
+
+        public override bool IsAttackTarget(HeroObject attacker)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override int Attacked(HeroObject attacker, int damage, DefenceType type = DefenceType.ACAgility, bool damageWeapon = true)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override bool IsFriendlyTarget(HeroObject ally)
+        {
+            throw new NotSupportedException();
+        }
     }
 }

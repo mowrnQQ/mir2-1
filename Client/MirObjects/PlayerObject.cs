@@ -4721,6 +4721,13 @@ namespace Client.MirObjects
 
             if (NameLabel == null || GuildLabel == null) return;
 
+            if (Name.Contains("\n"))
+            {
+                var splitName = Name.Split('\n');
+                Name = splitName[0];
+                GuildName = splitName[1];
+            }
+
             if (GuildName != "")
             {
                 GuildLabel.Text = GuildName;

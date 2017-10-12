@@ -119,6 +119,9 @@ namespace Client
             }
         }
 
+        public static int HeroHpRate { get; set; }
+        public static int HeroMpRate { get; set; }
+
         //Game
         public static string AccountID = "",
                              Password = "";
