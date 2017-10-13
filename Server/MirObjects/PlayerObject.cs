@@ -336,7 +336,11 @@ namespace Server.MirObjects
             get { return Info.CompletedQuests; }
         }
 
+        public long HeroSummonTime { get; set; }
+
         public byte AttackBonus, MineRate, GemRate, FishRate, CraftRate, SkillNeckBoost;
+
+        public HeroObject Hero;
 
         public PlayerObject(CharacterInfo info, MirConnection connection)
         {
@@ -21719,6 +21723,21 @@ namespace Server.MirObjects
                 Hero.Despawn();
                 Hero = null;
             }
+        }
+
+        public override bool IsAttackTarget(HeroObject attacker)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override int Attacked(HeroObject attacker, int damage, DefenceType type = DefenceType.ACAgility, bool damageWeapon = true)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override bool IsFriendlyTarget(HeroObject ally)
+        {
+            throw new NotImplementedException();
         }
 
         #endregion

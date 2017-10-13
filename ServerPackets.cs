@@ -482,6 +482,9 @@ namespace ServerPackets
         public int HeroIndex;
         public bool HeroSummoned;
 
+        public bool HasExpandedStorage;
+        public DateTime ExpandedStorageExpiryTime;
+
         protected override void ReadPacket(BinaryReader reader)
         {
             ObjectID = reader.ReadUInt32();
@@ -552,6 +555,9 @@ namespace ServerPackets
             CreatureSummoned = reader.ReadBoolean();
             HeroIndex = reader.ReadInt32();
             HeroSummoned = reader.ReadBoolean();
+
+            HasExpandedStorage = reader.ReadBoolean();
+            ExpandedStorageExpiryTime = DateTime.FromBinary(reader.ReadInt64());
         }
 
         protected override void WritePacket(BinaryWriter writer)
@@ -634,6 +640,9 @@ namespace ServerPackets
             writer.Write(CreatureSummoned);
             writer.Write(HeroIndex);
             writer.Write(HeroSummoned);
+
+            writer.Write(HasExpandedStorage);
+            writer.Write(ExpandedStorageExpiryTime.ToBinary());
         }
     }
     public sealed class UserLocation : Packet
@@ -680,7 +689,7 @@ namespace ServerPackets
         public MirDirection Direction;
         public byte Hair;
         public byte Light;
-        public short Weapon, Armour;
+        public short Weapon, WeaponEffect, Armour;
         public PoisonType Poison;
         public bool Dead, Hidden;
         public SpellEffect Effect;
@@ -716,6 +725,7 @@ namespace ServerPackets
             Hair = reader.ReadByte();
             Light = reader.ReadByte();
             Weapon = reader.ReadInt16();
+            WeaponEffect = reader.ReadInt16();
             Armour = reader.ReadInt16();
             Poison = (PoisonType)reader.ReadUInt16();
             Dead = reader.ReadBoolean();
@@ -758,6 +768,7 @@ namespace ServerPackets
             writer.Write(Hair);
             writer.Write(Light);
             writer.Write(Weapon);
+            writer.Write(WeaponEffect);
             writer.Write(Armour);
             writer.Write((ushort)Poison);
             writer.Write(Dead);
@@ -1386,7 +1397,7 @@ namespace ServerPackets
 
         public uint ObjectID;
         public byte Light;
-        public short Weapon, Armour;
+        public short Weapon, WeaponEffect, Armour;
         public byte WingEffect;
 
         protected override void ReadPacket(BinaryReader reader)
@@ -1395,6 +1406,7 @@ namespace ServerPackets
 
             Light = reader.ReadByte();
             Weapon = reader.ReadInt16();
+            WeaponEffect = reader.ReadInt16();
             Armour = reader.ReadInt16();
             WingEffect = reader.ReadByte();
         }
@@ -1405,6 +1417,7 @@ namespace ServerPackets
 
             writer.Write(Light);
             writer.Write(Weapon);
+            writer.Write(WeaponEffect);
             writer.Write(Armour);
             writer.Write(WingEffect);
         }
@@ -5044,14 +5057,20 @@ namespace ServerPackets
         public override short Index { get { return (short)ServerPacketIds.ResizeStorage; } }
 
         public int Size;
+        public bool HasExpandedStorage;
+        public DateTime ExpiryTime;
 
         protected override void ReadPacket(BinaryReader reader)
         {
             Size = reader.ReadInt32();
+            HasExpandedStorage = reader.ReadBoolean();
+            ExpiryTime = DateTime.FromBinary(reader.ReadInt64());
         }
         protected override void WritePacket(BinaryWriter writer)
         {
             writer.Write(Size);
+            writer.Write(HasExpandedStorage);
+            writer.Write(ExpiryTime.ToBinary());
         }
     }
 

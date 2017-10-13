@@ -1645,7 +1645,6 @@ public NewHeroDialog NewHeroDialog;
                 case (short)ServerPacketIds.Opendoor:
                     Opendoor((S.Opendoor)p);
                     break;
-<<<<<<< .mine
                 case (short)ServerPacketIds.NewHeroRequest:
                     NewHero();
                     break;
@@ -1723,65 +1722,6 @@ public NewHeroDialog NewHeroDialog;
             MainDialog.HeroOpControl.Visible = packet.Index > 0;
             MainDialog.HeroOpControl.BringToFront();
         }
-
-        public void CreateBuff(Buff buff)
-        {
-            string text = "";
-            int buffImage = BuffImage(buff.Type);
-
-            MLibrary buffLibrary = Libraries.BuffIcon;
-
-            if (buffImage >= 20000)
-            {
-                buffImage -= 20000;
-                buffLibrary = Libraries.MagIcon;
-            }
-
-            if (buffImage >= 10000)
-            {
-                buffImage -= 10000;
-                buffLibrary = Libraries.Prguse2;
-            }
-
-            MirImageControl image = new MirImageControl
-            {
-                Library = buffLibrary,
-                Parent = this,
-                Visible = true,
-                Sort = false,
-                Index = buffImage
-            };
-
-            new MirLabel
-            {
-                DrawFormat = TextFormatFlags.Right,
-                NotControl = true,
-                ForeColour = Color.Yellow,
-                Location = new Point(-7, 10),
-                Size = new Size(30, 20),
-                Parent = image
-            };
-            
-            switch (buff.Type)
-            {
-                case BuffType.UltimateEnhancer:
-                    if (GameScene.User.Class == MirClass.Wizard || GameScene.User.Class == MirClass.Archer)
-                    {
-                        text = string.Format("魔法 提高  0-{0} {1} 秒.", buff.Values[0], (buff.Expire - CMain.Time) / 1000);
-                    }
-                    else if (GameScene.User.Class == MirClass.Taoist)
-                    {
-                        text = string.Format("道术 提高 0-{0} {1} 秒.", buff.Values[0], (buff.Expire - CMain.Time) / 1000);
-                    }
-                    else
-                    {
-                        text = string.Format("攻击 提高 0-{0} {1} 秒.", buff.Values[0], (buff.Expire - CMain.Time) / 1000);
-                    }
-				break;
-                
-            }
-        }
- 
 
         private void KeepAlive(S.KeepAlive p)
         {
