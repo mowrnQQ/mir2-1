@@ -354,7 +354,7 @@ namespace Client.MirObjects
                     continue;
 
                 ItemInfo RealItem = Functions.GetRealItem(temp.Info, Level, Class, GameScene.ItemInfoList);
-                if (RealItem.Type == ItemType.武器 || RealItem.Type == ItemType.火把)
+                if (RealItem.Type == ItemType.Weapon || RealItem.Type == ItemType.Torch)
                     CurrentHandWeight = (ushort)Math.Min(ushort.MaxValue, CurrentHandWeight + temp.Weight);
                 else
                     CurrentWearWeight = (ushort)Math.Min(ushort.MaxValue, CurrentWearWeight + temp.Weight);
@@ -412,19 +412,19 @@ namespace Client.MirObjects
                 if (RealItem.CanFastRun)
                     FastRun = true;
 
-                if (RealItem.Type == ItemType.护甲)
+                if (RealItem.Type == ItemType.Armour)
                 {
                     Armour = RealItem.Shape;
                     WingEffect = RealItem.Effect;
                 }
 
-                if (RealItem.Type == ItemType.武器)
+                if (RealItem.Type == ItemType.Weapon)
                 {
                     Weapon = RealItem.Shape;
                     //WeaponEffect = RealItem.Effect;
                 }
 
-                if (RealItem.Type == ItemType.坐骑)
+                if (RealItem.Type == ItemType.Mount)
                     MountType = RealItem.Shape;
 
                 if (RealItem.Set == ItemSet.None) continue;
@@ -465,11 +465,11 @@ namespace Client.MirObjects
         {
             foreach (var s in ItemSets)
             {
-                if ((s.Set == ItemSet.Smash) && (s.Type.Contains(ItemType.戒指)) && (s.Type.Contains(ItemType.手镯)))//如果破碎套装 装备了戒指和手镯
+                if ((s.Set == ItemSet.Smash) && (s.Type.Contains(ItemType.Ring)) && (s.Type.Contains(ItemType.Bracelet)))//如果破碎套装 装备了戒指和手镯
                     ASpeed = (sbyte)Math.Min(sbyte.MaxValue, ASpeed + 2);//攻击速度+2
-                if ((s.Set == ItemSet.Purity) && (s.Type.Contains(ItemType.戒指)) && (s.Type.Contains(ItemType.手镯)))//如果灵玉套装 装备了戒指和手镯
+                if ((s.Set == ItemSet.Purity) && (s.Type.Contains(ItemType.Ring)) && (s.Type.Contains(ItemType.Bracelet)))//如果灵玉套装 装备了戒指和手镯
                     Holy = Math.Min(byte.MaxValue, (byte)(Holy + 3));//神圣+3
-                if ((s.Set == ItemSet.HwanDevil) && (s.Type.Contains(ItemType.戒指)) && (s.Type.Contains(ItemType.手镯)))//如果幻魔石套装 装备了戒指和手镯
+                if ((s.Set == ItemSet.HwanDevil) && (s.Type.Contains(ItemType.Ring)) && (s.Type.Contains(ItemType.Bracelet)))//如果幻魔石套装 装备了戒指和手镯
                 {
                     MaxWearWeight = (ushort)Math.Min(ushort.MaxValue, MaxWearWeight + 5);//穿戴负重+5
                     MaxBagWeight = (ushort)Math.Min(ushort.MaxValue, MaxBagWeight + 20);//背包负重+20
@@ -759,16 +759,16 @@ namespace Client.MirObjects
                 ClientMagic magic = Magics[i];
                 switch (magic.Spell)
                 {
-                    case Spell.基本剑术:
+                    case Spell.Fencing:
                         Accuracy = (byte)Math.Min(byte.MaxValue, Accuracy + magic.Level * 3);//准确
                         break;
-                    case Spell.攻杀剑术://添加攻杀 根据等级提高准确
+                    case Spell.Slaying://添加攻杀 根据等级提高准确
                         Accuracy = (byte)Math.Min(byte.MaxValue, Accuracy + magic.Level);
                         break;
-                    case Spell.绝命剑法:
+                    case Spell.FatalSword:
                         Accuracy = (byte)Math.Min(byte.MaxValue, Accuracy + magic.Level);
                         break;
-                    case Spell.精神力战法:
+                    case Spell.SpiritSword:
                         Accuracy = (byte)Math.Min(byte.MaxValue, Accuracy + (byte)Math.Round(8F / 3F * magic.Level));
                         break;
                 }

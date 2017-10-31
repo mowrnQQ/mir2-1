@@ -567,7 +567,7 @@ namespace Server.MirObjects
                     SpellObject spell = new SpellObject
                     {
                         ExpireTime = long.MaxValue,
-                        Spell = Spell.困魔咒,
+                        Spell = Spell.TrapHexagon,
                         TickSpeed = int.MaxValue,
                         CurrentLocation = new Point(x, y),
                         CurrentMap = ConquestMap,

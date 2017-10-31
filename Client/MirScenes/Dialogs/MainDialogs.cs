@@ -1756,7 +1756,7 @@ namespace Client.MirScenes.Dialogs
                         Blending = true,
                     };
                     animEffect.AfterAnimation += (o, e) => animEffect.Dispose();
-                    SoundManager.PlaySound(20000 + (ushort)Spell.魔法盾 * 10);
+                    SoundManager.PlaySound(20000 + (ushort)Spell.MagicShield * 10);
                     break;
             }
 
@@ -5008,7 +5008,7 @@ namespace Client.MirScenes.Dialogs
 
             switch (item.Info.Type)
             {
-                case ItemType.护身符: //Based on stacks of 5000
+                case ItemType.Amulet: //Based on stacks of 5000
                     if (item.Count > AmuletWarning)
                         Amulet.Index = 2134;
                     if (item.Count <= AmuletWarning)
@@ -5018,7 +5018,7 @@ namespace Client.MirScenes.Dialogs
                     if (item.Count == 0)
                         Amulet.Index = -1;
                     break;
-                case ItemType.护甲:
+                case ItemType.Armour:
                     if (item.CurrentDura > Warning)
                         Armour.Index = 2149;
                     if (item.CurrentDura <= Warning)
@@ -5028,7 +5028,7 @@ namespace Client.MirScenes.Dialogs
                     if (item.CurrentDura == 0)
                         Armour.Index = -1;
                     break;
-                case ItemType.腰带:
+                case ItemType.Belt:
                     if (item.CurrentDura > Warning)
                         Belt.Index = 2158;
                     if (item.CurrentDura <= Warning)
@@ -5038,7 +5038,7 @@ namespace Client.MirScenes.Dialogs
                     if (item.CurrentDura == 0)
                         Belt.Index = -1;
                     break;
-                case ItemType.鞋:
+                case ItemType.Boots:
                     if (item.CurrentDura > Warning)
                         Boots.Index = 2152;
                     if (item.CurrentDura <= Warning)
@@ -5048,7 +5048,7 @@ namespace Client.MirScenes.Dialogs
                     if (item.CurrentDura == 0)
                         Boots.Index = -1;
                     break;
-                case ItemType.手镯:
+                case ItemType.Bracelet:
                     if (GameScene.Scene.CharacterDialog.Grid[(byte)EquipmentSlot.BraceletR].Item != null && item.UniqueID == GameScene.Scene.CharacterDialog.Grid[(byte)EquipmentSlot.BraceletR].Item.UniqueID)
                     {
                         if (item.CurrentDura > Warning)
@@ -5072,7 +5072,7 @@ namespace Client.MirScenes.Dialogs
                             LeftBracelet.Index = -1;
                     }
                     break;
-                case ItemType.头盔:
+                case ItemType.Helmet:
                     if (item.CurrentDura > Warning)
                         Helmet.Index = 2155;
                     if (item.CurrentDura <= Warning)
@@ -5082,7 +5082,7 @@ namespace Client.MirScenes.Dialogs
                     if (item.CurrentDura == 0)
                         Helmet.Index = -1;
                     break;
-                case ItemType.项链:
+                case ItemType.Necklace:
                     if (item.CurrentDura > Warning)
                         Necklace.Index = 2122;
                     if (item.CurrentDura <= Warning)
@@ -5092,7 +5092,7 @@ namespace Client.MirScenes.Dialogs
                     if (item.CurrentDura == 0)
                         Necklace.Index = -1;
                     break;
-                case ItemType.戒指:
+                case ItemType.Ring:
                     if (GameScene.Scene.CharacterDialog.Grid[(byte)EquipmentSlot.RingR].Item != null && item.UniqueID == GameScene.Scene.CharacterDialog.Grid[(byte)EquipmentSlot.RingR].Item.UniqueID)
                     {
                         if (item.CurrentDura > Warning)
@@ -5116,11 +5116,11 @@ namespace Client.MirScenes.Dialogs
                             LeftRing.Index = -1;
                     }
                     break;
-                case ItemType.守护石:
+                case ItemType.Stone:
                     if (item.CurrentDura == 0)
                         Stone.Index = 2137;
                     break;
-                case ItemType.坐骑:
+                case ItemType.Mount:
                     if (item.CurrentDura > Warning)
                         Mount.Index = 2140;
                     if (item.CurrentDura <= Warning)
@@ -5130,7 +5130,7 @@ namespace Client.MirScenes.Dialogs
                     if (item.CurrentDura == 0)
                         Mount.Index = -1;
                     break;
-                case ItemType.火把:
+                case ItemType.Torch:
                     if (item.CurrentDura > Warning)
                         Torch.Index = 2146;
                     if (item.CurrentDura <= Warning)
@@ -5140,7 +5140,7 @@ namespace Client.MirScenes.Dialogs
                     if (item.CurrentDura == 0)
                         Torch.Index = -1;
                     break;
-                case ItemType.武器:
+                case ItemType.Weapon:
                     if (item.CurrentDura > Warning)
                         Weapon.Index = 2125;
                     if (item.CurrentDura <= Warning)

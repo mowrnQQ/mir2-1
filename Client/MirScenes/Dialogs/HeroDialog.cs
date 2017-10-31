@@ -496,7 +496,7 @@ namespace Client.MirScenes.Dialogs
         {
             for (int i = 0; i < Grid.Length; i++)
             {
-                if (Grid[i].Item != null && (Grid[i].Item.Info.Type == ItemType.药剂 && (int)Grid[i].Item.Info.Shape == 1 && (int)Grid[i].Item.Info.Effect == 1) && ((int)Grid[i].Item.Info.HP != 0 || (uint)Grid[i].Item.Info.HPrate > 0))
+                if (Grid[i].Item != null && (Grid[i].Item.Info.Type == ItemType.Potion && (int)Grid[i].Item.Info.Shape == 1 && (int)Grid[i].Item.Info.Effect == 1) && ((int)Grid[i].Item.Info.HP != 0 || (uint)Grid[i].Item.Info.HPrate > 0))
                 {
                     if (UseItemTime >= CMain.Time)
                         break;
@@ -515,7 +515,7 @@ namespace Client.MirScenes.Dialogs
         {
             for (int i = 0; i < Grid.Length; i++)
             {
-                if (Grid[i].Item != null && (Grid[i].Item.Info.Type == ItemType.药剂 && (int)Grid[i].Item.Info.Shape == 1 && (int)Grid[i].Item.Info.Effect == 1) && ((int)Grid[i].Item.Info.MP != 0 || (uint)Grid[i].Item.Info.MPrate > 0))
+                if (Grid[i].Item != null && (Grid[i].Item.Info.Type == ItemType.Potion && (int)Grid[i].Item.Info.Shape == 1 && (int)Grid[i].Item.Info.Effect == 1) && ((int)Grid[i].Item.Info.MP != 0 || (uint)Grid[i].Item.Info.MPrate > 0))
                 {
                     if (UseItemTime >= CMain.Time)
                         break;

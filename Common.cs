@@ -72,11 +72,11 @@ public enum OutputMessageType : byte
 
 public enum ItemGrade : byte
 {
-    无 = 0,
-    普通 = 1,
-    稀有 = 2,
-    传奇 = 3,
-    史诗 = 4,
+    None = 0,
+    Common = 1,
+    Rare = 2,
+    Legendary = 3,
+    Mythical = 4,
 }
 public enum StatType : byte
 {
@@ -757,43 +757,43 @@ public enum ChatType : byte
 
 public enum ItemType : byte
 {
-    无 = 0,
-    武器 = 1,
-    护甲 = 2,
-    头盔 = 4,
-    项链 = 5,
-    手镯 = 6,
-    戒指 = 7,
-    护身符 = 8,
-    腰带 = 9,
-    鞋 = 10,
-    守护石 = 11,
-    火把 = 12,
-    药剂 = 13,
-    矿物 = 14,
-    肉 = 15,
-    合成材料 = 16,
-    卷轴 = 17,
-    宝玉 = 18,
-    坐骑 = 19,
-    书籍 = 20,
-    手稿 = 21,
+    Nothing = 0,
+    Weapon = 1,
+    Armour = 2,
+    Helmet = 4,
+    Necklace = 5,
+    Bracelet = 6,
+    Ring = 7,
+    Amulet = 8,
+    Belt = 9,
+    Boots = 10,
+    Stone = 11,
+    Torch = 12,
+    Potion = 13,
+    Ore = 14,
+    Meat = 15,
+    CraftingMaterial = 16,
+    Scroll = 17,
+    Gem = 18,
+    Mount = 19,
+    Book = 20,
+    Script = 21,
     Reins = 22,
-    铃铛 = 23,
-    马鞍 = 24,
-    色带 = 25,
-    面具 = 26,
-    食物 = 27,
-    鱼钩 = 28,
+    Bells = 23,
+    Saddle = 24,
+    Ribbon = 25,
+    Mask = 26,
+    Food = 27,
+    Hook = 28,
     Float = 29,
-    饵 = 30,
+    Bait = 30,
     Finder = 31,
     Reel = 32,
-    鱼 = 33,
-    任务 = 34,
-	觉醒 = 35,
-    宠物 = 36,
-    变换 = 37,
+    Fish = 33,
+    Quest = 34,
+    Awakening = 35,
+    Pets = 36,
+    Transform = 37,
 }
 
 public enum MirGridType : byte
@@ -946,21 +946,21 @@ public enum SpecialItemMode : short
 [Obfuscation(Feature = "renaming", Exclude = true)]
 public enum RequiredClass : byte
 {
-    战士 = 1,
-    法师 = 2,
-    道士 = 4,
-    刺客 = 8,
-    弓手 = 16,
-    战士法师道士 = 战士 | 法师 | 道士,
-    无 = 战士法师道士 | 刺客 | 弓手
+    Warrior = 1,
+    Wizard = 2,
+    Taoist = 4,
+    Assassin = 8,
+    Archer = 16,
+    WarWizTao = Warrior | Wizard | Taoist,
+    None = WarWizTao | Assassin | Archer
 }
 [Flags]
 [Obfuscation(Feature = "renaming", Exclude = true)]
 public enum RequiredGender : byte
 {
-    男 = 1,
-    女 = 2,
-    无 = 男 | 女
+    Male = 1,
+    Female = 2,
+    None = Male | Female
 }
 [Obfuscation(Feature = "renaming", Exclude = true)]
 public enum RequiredType : byte
@@ -1015,115 +1015,115 @@ public enum Spell : byte
     None = 0,
 
     //Warrior
-    基本剑术 = 1,
-    攻杀剑术 = 2,
-    刺杀剑术 = 3,
-    半月弯刀 = 4,
-    野蛮冲撞 = 5,
-    双龙斩 = 6,
-    捕绳剑 = 7,
-    烈火剑法 = 8,
-    狮子吼 = 9,
-    狂风斩 = 10,
-    空破闪 = 11,
-    护身气幕 = 12,
-    剑气爆 = 13,
-    天务 = 14,
-    日闪 = 15,
-    血龙剑法 = 16,
-    金刚不坏 = 17,
+    Fencing = 1,
+    Slaying = 2,
+    Thrusting = 3,
+    HalfMoon = 4,
+    ShoulderDash = 5,
+    TwinDrakeBlade = 6,
+    Entrapment = 7,
+    FlamingSword = 8,
+    LionRoar = 9,
+    CrossHalfMoon = 10,
+    BladeAvalanche = 11,
+    ProtectionField = 12,
+    Rage = 13,
+    CounterAttack = 14,
+    SlashingBurst = 15,
+    Fury = 16,
+    ImmortalSkin = 17,
 
     //Wizard
-    火球术 = 31,
-    抗拒火环 = 32,
-    诱惑之光 = 33,
-    大火球 = 34,
-    地狱火 = 35,
-    雷电术 = 36,
-    瞬息移动 = 37,
-    爆裂火焰 = 38,
-    火墙 = 39,
-    疾光电影 = 40,
-    寒冰掌 = 41,
-    地狱雷光 = 42,
-    魔法盾 = 43,
-    圣言术 = 44,
-    噬血术 = 45,
-    冰咆哮 = 46,
-    灭天火 = 47,
-    分身术 = 48,
-    火龙气焰 = 49,
-    天霜冰环 = 50,
-    深延术 = 51,
-    天上秘术 = 52,
-    冰焰术 = 53,
-    雷仙风 = 54,
+    FireBall = 31,
+    Repulsion = 32,
+    ElectricShock = 33,
+    GreatFireBall = 34,
+    HellFire = 35,
+    ThunderBolt = 36,
+    Teleport = 37,
+    FireBang = 38,
+    FireWall = 39,
+    Lightning = 40,
+    FrostCrunch = 41,
+    ThunderStorm = 42,
+    MagicShield = 43,
+    TurnUndead = 44,
+    Vampirism = 45,
+    IceStorm = 46,
+    FlameDisruptor = 47,
+    Mirroring = 48,
+    FlameField = 49,
+    Blizzard = 50,
+    MagicBooster = 51,
+    MeteorStrike = 52,
+    IceThrust = 53,
+    FastMove = 54,
     StormEscape = 55,
 
     //Taoist
-    治愈术 = 61,
-    精神力战法 = 62,
-    施毒术 = 63,
-    灵魂火符 = 64,
-    召唤骷髅 = 65,
-    隐身术 = 67,
-    集体隐身术 = 68,
-    幽灵盾 = 69,
-    心灵启示 = 70,
-    神圣战甲术 = 71,
-    气功波 = 72,
-    困魔咒 = 73,
-    净化术 = 74,
-    群体治疗术 = 75,
-    迷魂术 = 76,
-    无极真气 = 77,
-    召唤神兽 = 78,
-    苏生术 = 79,
-    精魂召唤术 = 80,
-    诅咒术 = 81,
-    烦恼 = 82,
-    毒雾 = 83,
-    先天气功 = 84,
-    血龙水 = 85,
-    阴阳五行阵 = 86,
+    Healing = 61,
+    SpiritSword = 62,
+    Poisoning = 63,
+    SoulFireBall = 64,
+    SummonSkeleton = 65,
+    Hiding = 67,
+    MassHiding = 68,
+    SoulShield = 69,
+    Revelation = 70,
+    BlessedArmour = 71,
+    EnergyRepulsor = 72,
+    TrapHexagon = 73,
+    Purification = 74,
+    MassHealing = 75,
+    Hallucination = 76,
+    UltimateEnhancer = 77,
+    SummonShinsu = 78,
+    Reincarnation = 79,
+    SummonHolyDeva = 80,
+    Curse = 81,
+    Plague = 82,
+    PoisonCloud = 83,
+    EnergyShield = 84,
+    PetEnhancer = 85,
+    HealingCircle = 86,
 
     //Assassin
-    绝命剑法 = 91,
-    风剑术 = 92,
-    体迅风 = 93,
-    拔刀术 = 94,
-    风身术 = 95,
-    迁移剑 = 96,
-    烈风击 = 97,
-    捕缚术 = 98,
-    猛毒剑气 = 99,
-    月影术 = 100,
-    吸气 = 101,
-    轻身步 = 102,
-    烈火身 = 103,
-    血风击 = 104,
-    月华乱舞 = 105,
-    月影雾 = 106,
+    FatalSword = 91,
+    DoubleSlash = 92,
+    Haste = 93,
+    FlashDash = 94,
+    LightBody = 95,
+    HeavenlySword = 96,
+    FireBurst = 97,
+    Trap = 98,
+    PoisonSword = 99,
+    MoonLight = 100,
+    MPEater = 101,
+    SwiftFeet = 102,
+    DarkBody = 103,
+    Hemorrhage = 104,
+    CrescentSlash = 105,
+    MoonMist = 106,
 
     //Archer
-    必中闪 = 121,
-    天日闪 = 122,
-    无我闪 = 123,
-    爆阱 = 124,
-    爆闪 = 125,
-    气功术 = 126,
-    风弹步 = 127,
-    万斤闪 = 128,
-    气流术 = 129,
-    地柱钉 = 130,
-    金刚术 = 131,
-    吸血地精 = 132,
-    吸血地闪 = 133,
-    痹魔阱 = 134,
-    毒魔闪 = 135,
-    邪爆闪 = 136,
-    蛇柱阱 = 137,
-    血龙闪 = 138,
+    Focus = 121,
+    StraightShot = 122,
+    DoubleShot = 123,
+    ExplosiveTrap = 124,
+    DelayedExplosion = 125,
+    Meditation = 126,
+    BackStep = 127,
+    ElementalShot = 128,
+    Concentration = 129,
+    Stonetrap = 130,
+    ElementalBarrier = 131,
+    SummonVampire = 132,
+    VampireShot = 133,
+    SummonToad = 134,
+    PoisonShot = 135,
+    CrippleShot = 136,
+    SummonSnakes = 137,
+    NapalmShot = 138,
     OneWithNature = 139,
     BindingShot = 140,
     MentalState = 141,
@@ -2619,8 +2619,8 @@ public class ItemInfo
     public ItemType Type { get; set; }
     public ItemGrade Grade { get; set; }
     public RequiredType RequiredType { get; set; } = RequiredType.Level;
-    public RequiredClass RequiredClass { get; set; } = RequiredClass.无;
-    public RequiredGender RequiredGender { get; set; } = RequiredGender.无;
+    public RequiredClass RequiredClass { get; set; } = RequiredClass.None;
+    public RequiredGender RequiredGender { get; set; } = RequiredGender.None;
     public ItemSet Set { get; set; }
 
 
@@ -2713,7 +2713,7 @@ public class ItemInfo
     [NotMapped]
     public bool IsConsumable
     {
-        get { return Type == ItemType.药剂 || Type == ItemType.卷轴 || Type == ItemType.食物 || Type == ItemType.变换; }
+        get { return Type == ItemType.Potion || Type == ItemType.Scroll || Type == ItemType.Food || Type == ItemType.Transform; }
     }
     [NotMapped]
     public string FriendlyName
@@ -2836,9 +2836,9 @@ public class ItemInfo
         else
         {
             RandomStatsId = 255;
-            if ((Type == ItemType.武器) || (Type == ItemType.护甲) || (Type == ItemType.头盔) || (Type == ItemType.项链) || (Type == ItemType.手镯) || (Type == ItemType.戒指) || (Type == ItemType.坐骑))
+            if ((Type == ItemType.Weapon) || (Type == ItemType.Armour) || (Type == ItemType.Helmet) || (Type == ItemType.Necklace) || (Type == ItemType.Bracelet) || (Type == ItemType.Ring) || (Type == ItemType.Mount))
                 RandomStatsId = (byte)Type;
-            if ((Type == ItemType.腰带) || (Type == ItemType.鞋))
+            if ((Type == ItemType.Belt) || (Type == ItemType.Boots))
                 RandomStatsId = 7;
         }
 
@@ -2853,7 +2853,7 @@ public class ItemInfo
         }
         if (version < 70) //before db version 70 all specialitems had wedding rings disabled, after that it became a server option
         {
-            if ((Type == ItemType.戒指) &&  (Unique != SpecialItemMode.None))
+            if ((Type == ItemType.Ring) &&  (Unique != SpecialItemMode.None))
                 Bind |= BindMode.NoWeddingRing;
         }
     }
@@ -3267,7 +3267,7 @@ public class UserItem
     [NotMapped]
     public uint Weight
     {
-        get { return Info.Type == ItemType.护身符 ? Info.Weight : Info.Weight*Count; }
+        get { return Info.Type == ItemType.Amulet ? Info.Weight : Info.Weight*Count; }
     }
     [NotMapped]
     public string Name
@@ -3539,13 +3539,13 @@ public class UserItem
 
         switch (Info.Type)
         {
-            case ItemType.坐骑:
+            case ItemType.Mount:
                 if (Info.Shape < 7)
                     amount = 4;
                 else if (Info.Shape < 12)
                     amount = 5;
                 break;
-            case ItemType.武器:
+            case ItemType.Weapon:
                 if (Info.Shape == 49 || Info.Shape == 50)
                     amount = 5;
                 break;
@@ -3563,7 +3563,7 @@ public class UserItem
             switch (Info.Type)
             {
                 #region Amulet and Poison Stack Image changes
-                case ItemType.护身符:
+                case ItemType.Amulet:
                     if (Info.StackSize > 0)
                     {
                         switch (Info.Shape)
@@ -3846,17 +3846,17 @@ public class Awake
         if (item.Info.Bind.HasFlag(BindMode.DontUpgrade))
             return false;
 
-        if (item.Info.Grade == ItemGrade.无) return false;
+        if (item.Info.Grade == ItemGrade.None) return false;
 		if (item.Info.CanAwakening != true)
             return false;
-        if (item.Info.Grade == ItemGrade.无)
+        if (item.Info.Grade == ItemGrade.None)
             return false;
 
         if (IsMaxLevel()) return false;
 
         if (this.type == AwakeType.None)
         {
-            if (item.Info.Type == ItemType.武器)
+            if (item.Info.Type == ItemType.Weapon)
             {
                 if (type == AwakeType.DC ||
                     type == AwakeType.MC ||
@@ -3868,7 +3868,7 @@ public class Awake
                 else
                     return false;
             }
-            else if (item.Info.Type == ItemType.头盔)
+            else if (item.Info.Type == ItemType.Helmet)
             {
                 if (type == AwakeType.AC ||
                     type == AwakeType.MAC)
@@ -3879,7 +3879,7 @@ public class Awake
                 else
                     return false;
             }
-            else if (item.Info.Type == ItemType.护甲)
+            else if (item.Info.Type == ItemType.Armour)
             {
                 if (type == AwakeType.HPMP)
                 {
@@ -3985,13 +3985,13 @@ public class Awake
 
         switch (item.Info.Type)
         {
-            case ItemType.武器:
+            case ItemType.Weapon:
                 result *= (int)Awake_WeaponRate;
                 break;
-            case ItemType.护甲:
+            case ItemType.Armour:
                 result *= (int)Awake_ArmorRate;
                 break;
-            case ItemType.头盔:
+            case ItemType.Helmet:
                 result *= (int)Awake_HelmetRate;
                 break;
             default:
@@ -4508,7 +4508,7 @@ public class IntelligentCreatureItemFilter
     public bool PetPickupAccessories = false;
     public bool PetPickupOthers = false;
 
-    public ItemGrade PickupGrade = ItemGrade.无;
+    public ItemGrade PickupGrade = ItemGrade.None;
 
     public IntelligentCreatureItemFilter()
     {
@@ -5701,33 +5701,33 @@ public class RandomItemStat
     public byte AttackSpeedChance, AttackSpeedStatChance, AttackSpeedMaxStat, LuckChance, LuckStatChance, LuckMaxStat;
     public byte CurseChance;
 
-    public RandomItemStat(ItemType Type = ItemType.书籍)
+    public RandomItemStat(ItemType Type = ItemType.Book)
     {
         switch (Type)
         {
-            case ItemType.武器:
+            case ItemType.Weapon:
                 SetWeapon();
                 break;
-            case ItemType.护甲:
+            case ItemType.Armour:
                 SetArmour();
                 break;
-            case ItemType.头盔:
+            case ItemType.Helmet:
                 SetHelmet();
                 break;
-            case ItemType.腰带:
-            case ItemType.鞋:
+            case ItemType.Belt:
+            case ItemType.Boots:
                 SetBeltBoots();
                 break;
-            case ItemType.项链:
+            case ItemType.Necklace:
                 SetNecklace();
                 break;
-            case ItemType.手镯:
+            case ItemType.Bracelet:
                 SetBracelet();
                 break;
-            case ItemType.戒指:
+            case ItemType.Ring:
                 SetRing();
                 break; 
-            case ItemType.坐骑:
+            case ItemType.Mount:
                 SetMount();
                 break;
         }

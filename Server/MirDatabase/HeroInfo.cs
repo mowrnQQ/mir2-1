@@ -121,9 +121,9 @@ namespace Server.MirDatabase
 
         public static List<Spell> HeroCanUseSpells = new List<Spell>()
         {
-            Spell.基本剑术,
-            Spell.大火球,
-            Spell.治愈术
+            Spell.Fencing,
+            Spell.GreatFireBall,
+            Spell.Healing
         };
     }
 

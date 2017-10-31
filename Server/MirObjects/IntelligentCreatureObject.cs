@@ -14,7 +14,7 @@ namespace Server.MirObjects
 
         public IntelligentCreatureType petType = IntelligentCreatureType.None;
 
-        public ItemGrade GradeFilter = ItemGrade.无;
+        public ItemGrade GradeFilter = ItemGrade.None;
 
         public IntelligentCreatureRules CreatureRules = new IntelligentCreatureRules();
         public IntelligentCreatureItemFilter ItemFilter = new IntelligentCreatureItemFilter();
@@ -584,7 +584,7 @@ namespace Server.MirObjects
                         for (int j = 0; j < Master.GroupMembers.Count; j++)
                             Master.GroupMembers[j].ReceiveChat(Name + " Picked up: {" + item.Item.Name + "}", ChatType.Hint);
 
-                    if (item.Item.Info.Grade == ItemGrade.史诗 || item.Item.Info.Grade == ItemGrade.传奇)
+                    if (item.Item.Info.Grade == ItemGrade.Mythical || item.Item.Info.Grade == ItemGrade.Legendary)
                     {
                         Master.ReceiveChat("Pet Picked up: {" + item.Item.Name + "}", ChatType.Hint);
                         ((PlayerObject)Master).Enqueue(new S.IntelligentCreaturePickup { ObjectID = ObjectID });
@@ -615,21 +615,21 @@ namespace Server.MirObjects
 
             switch (iType)
             {
-                case ItemType.无:// <---- im not sure if any item will ever hold this ItemType but better to prevent then cure
+                case ItemType.Nothing:// <---- im not sure if any item will ever hold this ItemType but better to prevent then cure
                     return false;
-                case ItemType.武器:
+                case ItemType.Weapon:
                     return ItemFilter.PetPickupWeapons;
-                case ItemType.护甲:
+                case ItemType.Armour:
                     return ItemFilter.PetPickupArmours;
-                case ItemType.头盔:
+                case ItemType.Helmet:
                     return ItemFilter.PetPickupHelmets;
-                case ItemType.鞋:
+                case ItemType.Boots:
                     return ItemFilter.PetPickupBoots;
-                case ItemType.腰带:
+                case ItemType.Belt:
                     return ItemFilter.PetPickupBelts;
-                case ItemType.项链:
-                case ItemType.手镯:
-                case ItemType.戒指:
+                case ItemType.Necklace:
+                case ItemType.Bracelet:
+                case ItemType.Ring:
                     return ItemFilter.PetPickupAccessories;
                 default:
                     return ItemFilter.PetPickupOthers;

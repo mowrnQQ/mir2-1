@@ -708,28 +708,28 @@ namespace Client.MirObjects
             if (quest.MinLevelNeeded > User.Level || quest.MaxLevelNeeded < User.Level)
                 return false;
 
-            if (!quest.ClassNeeded.HasFlag(RequiredClass.无))
+            if (!quest.ClassNeeded.HasFlag(RequiredClass.None))
             {
                 switch (User.Class)
                 {
                     case MirClass.Warrior:
-                        if (!quest.ClassNeeded.HasFlag(RequiredClass.战士))
+                        if (!quest.ClassNeeded.HasFlag(RequiredClass.Warrior))
                             return false;
                         break;
                     case MirClass.Wizard:
-                        if (!quest.ClassNeeded.HasFlag(RequiredClass.法师))
+                        if (!quest.ClassNeeded.HasFlag(RequiredClass.Wizard))
                             return false;
                         break;
                     case MirClass.Taoist:
-                        if (!quest.ClassNeeded.HasFlag(RequiredClass.道士))
+                        if (!quest.ClassNeeded.HasFlag(RequiredClass.Taoist))
                             return false;
                         break;
                     case MirClass.Assassin:
-                        if (!quest.ClassNeeded.HasFlag(RequiredClass.刺客))
+                        if (!quest.ClassNeeded.HasFlag(RequiredClass.Assassin))
                             return false;
                         break;
                     case MirClass.Archer:
-                        if (!quest.ClassNeeded.HasFlag(RequiredClass.弓手))
+                        if (!quest.ClassNeeded.HasFlag(RequiredClass.Archer))
                             return false;
                         break;
                 }

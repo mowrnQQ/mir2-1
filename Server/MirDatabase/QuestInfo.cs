@@ -50,7 +50,7 @@ namespace Server.MirDatabase
         public int RequiredMinLevel { get; set; }
         public int RequiredMaxLevel { get; set; }
         public int RequiredQuest { get; set; }
-        public RequiredClass RequiredClass { get; set; } = RequiredClass.无;
+        public RequiredClass RequiredClass { get; set; } = RequiredClass.None;
 
         public QuestType Type { get; set; }
 
@@ -344,23 +344,23 @@ namespace Server.MirDatabase
             switch (player.Class)
             {
                 case MirClass.Warrior:
-                    if (!RequiredClass.HasFlag(RequiredClass.战士))
+                    if (!RequiredClass.HasFlag(RequiredClass.Warrior))
                         return false;
                     break;
                 case MirClass.Wizard:
-                    if (!RequiredClass.HasFlag(RequiredClass.法师))
+                    if (!RequiredClass.HasFlag(RequiredClass.Wizard))
                         return false;
                     break;
                 case MirClass.Taoist:
-                    if (!RequiredClass.HasFlag(RequiredClass.道士))
+                    if (!RequiredClass.HasFlag(RequiredClass.Taoist))
                         return false;
                     break;
                 case MirClass.Assassin:
-                    if (!RequiredClass.HasFlag(RequiredClass.刺客))
+                    if (!RequiredClass.HasFlag(RequiredClass.Assassin))
                         return false;
                     break;
                 case MirClass.Archer:
-                    if (!RequiredClass.HasFlag(RequiredClass.弓手))
+                    if (!RequiredClass.HasFlag(RequiredClass.Archer))
                         return false;
                     break;
             }

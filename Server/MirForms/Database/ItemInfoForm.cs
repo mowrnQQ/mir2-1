@@ -54,7 +54,7 @@ namespace Server
 
         public void RefreshUniqueTab()
         {
-            if ((ITypeComboBox.SelectedItem != null) && ((ItemType)ITypeComboBox.SelectedItem == ItemType.宝玉))
+            if ((ITypeComboBox.SelectedItem != null) && ((ItemType)ITypeComboBox.SelectedItem == ItemType.Gem))
             {
                 tabControl1.TabPages[3].Text = "Usable on";
                 ParalysischeckBox.Text = "Weapon";

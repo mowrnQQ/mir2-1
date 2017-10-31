@@ -516,7 +516,7 @@ namespace Server.MirEnvir
                         SpellObject spell = new SpellObject
                         {
                             ExpireTime = long.MaxValue,
-                            Spell = Spell.困魔咒,
+                            Spell = Spell.TrapHexagon,
                             TickSpeed = int.MaxValue,
                             CurrentLocation = new Point(x, y),
                             CurrentMap = this,
@@ -547,7 +547,7 @@ namespace Server.MirEnvir
                                 ExpireTime = long.MaxValue,
                                 Value = 25,
                                 TickSpeed = 2000,
-                                Spell = Spell.治愈术,
+                                Spell = Spell.Healing,
                                 CurrentLocation = new Point(x, y),
                                 CurrentMap = this
                             };
@@ -825,7 +825,7 @@ namespace Server.MirEnvir
 
                 #region HellFire
 
-                case Spell.地狱火:
+                case Spell.HellFire:
                     value = (int)data[2];
                     dir = (MirDirection)data[4];
                     location = Functions.PointMove((Point)data[3], dir, 1);
@@ -867,12 +867,12 @@ namespace Server.MirEnvir
 
                 #region SummonSkeleton, SummonShinsu, SummonHolyDeva, ArcherSummons
 
-                case Spell.召唤骷髅:
-                case Spell.召唤神兽:
-                case Spell.精魂召唤术:
-                case Spell.吸血地精:
-                case Spell.痹魔阱:
-                case Spell.蛇柱阱:
+                case Spell.SummonSkeleton:
+                case Spell.SummonShinsu:
+                case Spell.SummonHolyDeva:
+                case Spell.SummonVampire:
+                case Spell.SummonToad:
+                case Spell.SummonSnakes:
                     monster = (MonsterObject)data[2];
                     front = (Point)data[3];
 
@@ -890,8 +890,8 @@ namespace Server.MirEnvir
 
                 #region FireBang, IceStorm
 
-                case Spell.冰咆哮:
-                case Spell.爆裂火焰:
+                case Spell.IceStorm:
+                case Spell.FireBang:
                     value = (int)data[2];
                     location = (Point)data[3];
 
@@ -936,7 +936,7 @@ namespace Server.MirEnvir
 
                 #region MassHiding
 
-                case Spell.集体隐身术:
+                case Spell.MassHiding:
                     value = (int)data[2];
                     location = (Point)data[3];
 
@@ -985,11 +985,11 @@ namespace Server.MirEnvir
 
                 #region SoulShield, BlessedArmour
 
-                case Spell.幽灵盾:
-                case Spell.神圣战甲术:
+                case Spell.SoulShield:
+                case Spell.BlessedArmour:
                     value = (int)data[2];
                     location = (Point)data[3];
-                    BuffType type = magic.Spell == Spell.幽灵盾 ? BuffType.SoulShield : BuffType.BlessedArmour;
+                    BuffType type = magic.Spell == Spell.SoulShield ? BuffType.SoulShield : BuffType.BlessedArmour;
 
                     for (int y = location.Y - 3; y <= location.Y + 3; y++)
                     {
@@ -1033,7 +1033,7 @@ namespace Server.MirEnvir
 
                 #region FireWall
 
-                case Spell.火墙:
+                case Spell.FireWall:
                     value = (int)data[2];
                     location = (Point)data[3];
 
@@ -1048,7 +1048,7 @@ namespace Server.MirEnvir
                             for (int o = 0; o < cell.Objects.Count; o++)
                             {
                                 MapObject target = cell.Objects[o];
-                                if (target.Race != ObjectType.Spell || ((SpellObject)target).Spell != Spell.火墙) continue;
+                                if (target.Race != ObjectType.Spell || ((SpellObject)target).Spell != Spell.FireWall) continue;
 
                                 cast = false;
                                 break;
@@ -1058,7 +1058,7 @@ namespace Server.MirEnvir
                         {
                             SpellObject ob = new SpellObject
                                 {
-                                    Spell = Spell.火墙,
+                                    Spell = Spell.FireWall,
                                     Value = value,
                                     ExpireTime = Envir.Time + (10 + value / 2) * 1000,
                                     TickSpeed = 2000,
@@ -1086,7 +1086,7 @@ namespace Server.MirEnvir
                             for (int o = 0; o < cell.Objects.Count; o++)
                             {
                                 MapObject target = cell.Objects[o];
-                                if (target.Race != ObjectType.Spell || ((SpellObject)target).Spell != Spell.火墙) continue;
+                                if (target.Race != ObjectType.Spell || ((SpellObject)target).Spell != Spell.FireWall) continue;
 
                                 cast = false;
                                 break;
@@ -1096,7 +1096,7 @@ namespace Server.MirEnvir
 
                         SpellObject ob = new SpellObject
                         {
-                            Spell = Spell.火墙,
+                            Spell = Spell.FireWall,
                             Value = value,
                             ExpireTime = Envir.Time + (10 + value / 2) * 1000,
                             TickSpeed = 2000,
@@ -1114,7 +1114,7 @@ namespace Server.MirEnvir
 
                 #region Lightning
 
-                case Spell.疾光电影:
+                case Spell.Lightning:
                     value = (int)data[2];
                     location = (Point)data[3];
                     dir = (MirDirection)data[4];
@@ -1147,7 +1147,7 @@ namespace Server.MirEnvir
 
                 #region HeavenlySword
 
-                case Spell.迁移剑:
+                case Spell.HeavenlySword:
                     value = (int)data[2];
                     location = (Point)data[3];
                     dir = (MirDirection)data[4];
@@ -1180,7 +1180,7 @@ namespace Server.MirEnvir
 
                 #region MassHealing
 
-                case Spell.群体治疗术:
+                case Spell.MassHealing:
                     value = (int)data[2];
                     location = (Point)data[3];
 
@@ -1227,9 +1227,9 @@ namespace Server.MirEnvir
 
                 #region ThunderStorm
 
-                case Spell.地狱雷光:
-                case Spell.火龙气焰:
-                case Spell.血龙闪:
+                case Spell.ThunderStorm:
+                case Spell.FlameField:
+                case Spell.NapalmShot:
                 case Spell.StormEscape:
                     value = (int)data[2];
                     location = (Point)data[3];
@@ -1257,7 +1257,7 @@ namespace Server.MirEnvir
                                         //Only targets
                                         if (!target.IsAttackTarget(player)) break;
 
-                                        if (target.Attacked(player, magic.Spell == Spell.地狱雷光 && !target.Undead ? value / 10 : value, DefenceType.MAC, false) <= 0)
+                                        if (target.Attacked(player, magic.Spell == Spell.ThunderStorm && !target.Undead ? value / 10 : value, DefenceType.MAC, false) <= 0)
                                         {
                                             if (target.Undead)
                                             {
@@ -1280,7 +1280,7 @@ namespace Server.MirEnvir
 
                 #region LionRoar
 
-                case Spell.狮子吼:
+                case Spell.LionRoar:
                     location = (Point)data[2];
 
                     for (int y = location.Y - 2; y <= location.Y + 2; y++)
@@ -1318,7 +1318,7 @@ namespace Server.MirEnvir
 
                 #region PoisonCloud
 
-                case Spell.毒雾:
+                case Spell.PoisonCloud:
                     value = (int)data[2];
                     location = (Point)data[3];
                     byte bonusdmg = (byte)data[4];
@@ -1344,7 +1344,7 @@ namespace Server.MirEnvir
                                 for (int o = 0; o < cell.Objects.Count; o++)
                                 {
                                     MapObject target = cell.Objects[o];
-                                    if (target.Race != ObjectType.Spell || ((SpellObject)target).Spell != Spell.毒雾) continue;
+                                    if (target.Race != ObjectType.Spell || ((SpellObject)target).Spell != Spell.PoisonCloud) continue;
 
                                     cast = false;
                                     break;
@@ -1354,7 +1354,7 @@ namespace Server.MirEnvir
 
                             SpellObject ob = new SpellObject
                                 {
-                                    Spell = Spell.毒雾,
+                                    Spell = Spell.PoisonCloud,
                                     Value = value + bonusdmg,
                                     ExpireTime = Envir.Time + 6000,
                                     TickSpeed = 1000,
@@ -1378,7 +1378,7 @@ namespace Server.MirEnvir
 
                 #region IceThrust
 
-                case Spell.冰焰术:
+                case Spell.IceThrust:
                     {
                         location = (Point)data[2];
                         MirDirection direction = (MirDirection)data[3];
@@ -1459,7 +1459,7 @@ namespace Server.MirEnvir
 
                 #region SlashingBurst
 
-                case Spell.日闪:
+                case Spell.SlashingBurst:
                     value = (int)data[2];
                     location = (Point)data[3];
                     dir = (MirDirection)data[4];
@@ -1492,7 +1492,7 @@ namespace Server.MirEnvir
 
                 #region Mirroring
 
-                case Spell.分身术:
+                case Spell.Mirroring:
                     monster = (MonsterObject)data[2];
                     front = (Point)data[3];
                     bool finish = (bool)data[4];
@@ -1513,7 +1513,7 @@ namespace Server.MirEnvir
 
                 #region Blizzard
 
-                case Spell.天霜冰环:
+                case Spell.Blizzard:
                     value = (int)data[2];
                     location = (Point)data[3];
 
@@ -1539,7 +1539,7 @@ namespace Server.MirEnvir
                                 for (int o = 0; o < cell.Objects.Count; o++)
                                 {
                                     MapObject target = cell.Objects[o];
-                                    if (target.Race != ObjectType.Spell || ((SpellObject) target).Spell != Spell.天霜冰环) continue;
+                                    if (target.Race != ObjectType.Spell || ((SpellObject) target).Spell != Spell.Blizzard) continue;
 
                                     cast = false;
                                     break;
@@ -1549,7 +1549,7 @@ namespace Server.MirEnvir
 
                             SpellObject ob = new SpellObject
                                 {
-                                    Spell = Spell.天霜冰环,
+                                    Spell = Spell.Blizzard,
                                     Value = value,
                                     ExpireTime = Envir.Time + 3000,
                                     TickSpeed = 440,
@@ -1574,7 +1574,7 @@ namespace Server.MirEnvir
 
                 #region MeteorStrike
 
-                case Spell.天上秘术:
+                case Spell.MeteorStrike:
                     value = (int)data[2];
                     location = (Point)data[3];
 
@@ -1600,7 +1600,7 @@ namespace Server.MirEnvir
                                 for (int o = 0; o < cell.Objects.Count; o++)
                                 {
                                     MapObject target = cell.Objects[o];
-                                    if (target.Race != ObjectType.Spell || ((SpellObject)target).Spell != Spell.天上秘术) continue;
+                                    if (target.Race != ObjectType.Spell || ((SpellObject)target).Spell != Spell.MeteorStrike) continue;
 
                                     cast = false;
                                     break;
@@ -1610,7 +1610,7 @@ namespace Server.MirEnvir
 
                             SpellObject ob = new SpellObject
                             {
-                                Spell = Spell.天上秘术,
+                                Spell = Spell.MeteorStrike,
                                 Value = value,
                                 ExpireTime = Envir.Time + 3000,
                                 TickSpeed = 440,
@@ -1635,7 +1635,7 @@ namespace Server.MirEnvir
 
                 #region TrapHexagon
 
-                case Spell.困魔咒:
+                case Spell.TrapHexagon:
                     value = (int)data[2];
                     location = (Point)data[3];
 
@@ -1695,7 +1695,7 @@ namespace Server.MirEnvir
                             if (spawnpoint.Y <= 0 || spawnpoint.Y > centerTarget.CurrentMap.Height) continue;
                             SpellObject ob = new SpellObject
                             {
-                                Spell = Spell.困魔咒,
+                                Spell = Spell.TrapHexagon,
                                 ExpireTime = Envir.Time + value,
                                 TickSpeed = 100,
                                 Caster = player,
@@ -1718,7 +1718,7 @@ namespace Server.MirEnvir
 
                 #region Curse
 
-                case Spell.诅咒术:
+                case Spell.Curse:
                     value = (int)data[2];
                     location = (Point)data[3];
                     value2 = (int)data[4];
@@ -1770,7 +1770,7 @@ namespace Server.MirEnvir
 
                 #region ExplosiveTrap
 
-                case Spell.爆阱:
+                case Spell.ExplosiveTrap:
                     value = (int)data[2];
                     front = (Point)data[3];
                     int trapID = (int)data[4];
@@ -1784,7 +1784,7 @@ namespace Server.MirEnvir
                             for (int o = 0; o < cell.Objects.Count; o++)
                             {
                                 MapObject target = cell.Objects[o];
-                                if (target.Race != ObjectType.Spell || (((SpellObject)target).Spell != Spell.火墙 && ((SpellObject)target).Spell != Spell.爆阱)) continue;
+                                if (target.Race != ObjectType.Spell || (((SpellObject)target).Spell != Spell.FireWall && ((SpellObject)target).Spell != Spell.ExplosiveTrap)) continue;
 
                                 cast = false;
                                 break;
@@ -1801,7 +1801,7 @@ namespace Server.MirEnvir
                             {
                                 SpellObject ob = new SpellObject
                                 {
-                                    Spell = Spell.爆阱,
+                                    Spell = Spell.ExplosiveTrap,
                                     Value = value,
                                     ExpireTime = Envir.Time + (10 + value / 2) * 1000,
                                     TickSpeed = 500,
@@ -1823,7 +1823,7 @@ namespace Server.MirEnvir
 
                 #region Plague
 
-                case Spell.烦恼:
+                case Spell.Plague:
                     value = (int)data[2];
                     location = (Point)data[3];
 
@@ -1901,7 +1901,7 @@ namespace Server.MirEnvir
 
                 #region Trap
 
-                case Spell.捕缚术:
+                case Spell.Trap:
                     value = (int)data[2];
                     location = (Point)data[3];
                     MonsterObject selectTarget = null;
@@ -1932,7 +1932,7 @@ namespace Server.MirEnvir
                     if (location.Y <= 0 || location.Y > selectTarget.CurrentMap.Height) break;
                     SpellObject spellOb = new SpellObject
                     {
-                        Spell = Spell.捕缚术,
+                        Spell = Spell.Trap,
                         ExpireTime = Envir.Time + value,
                         TickSpeed = 100,
                         Caster = player,
@@ -2071,7 +2071,7 @@ namespace Server.MirEnvir
 
                 #region DelayedExplosion
 
-                case Spell.爆闪:
+                case Spell.DelayedExplosion:
                     value = (int)data[2];
                     location = (Point)data[3];
 

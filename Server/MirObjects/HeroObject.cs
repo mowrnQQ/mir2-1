@@ -361,13 +361,13 @@ namespace Server.MirObjects
             {
                 #region FireBall, GreatFireBall, ThunderBolt, SoulFireBall, FlameDisruptor
 
-                case Spell.火球术:
-                case Spell.大火球:
-                case Spell.雷电术:
-                case Spell.灵魂火符:
-                case Spell.灭天火:
-                case Spell.天日闪:
-                case Spell.无我闪:
+                case Spell.FireBall:
+                case Spell.GreatFireBall:
+                case Spell.ThunderBolt:
+                case Spell.SoulFireBall:
+                case Spell.FlameDisruptor:
+                case Spell.StraightShot:
+                case Spell.DoubleShot:
                     value = (int)data[1];
                     target = (MapObject)data[2];
 
@@ -378,7 +378,7 @@ namespace Server.MirObjects
                 #endregion
 
                 #region FrostCrunch
-                case Spell.寒冰掌:
+                case Spell.FrostCrunch:
                     value = (int)data[1];
                     target = (MapObject)data[2];
 
@@ -417,7 +417,7 @@ namespace Server.MirObjects
 
                 #region Vampirism
 
-                case Spell.噬血术:
+                case Spell.Vampirism:
                     value = (int)data[1];
                     target = (MapObject)data[2];
 
@@ -433,7 +433,7 @@ namespace Server.MirObjects
 
                 #region Healing
 
-                case Spell.治愈术:
+                case Spell.Healing:
                     value = (int)data[1];
                     target = (MapObject)data[2];
 
@@ -448,7 +448,7 @@ namespace Server.MirObjects
 
                 #region ElectricShock
 
-                case Spell.诱惑之光:
+                case Spell.ElectricShock:
                     monster = (MonsterObject)data[1];
                     if (monster == null || !monster.IsAttackTarget(this) || monster.CurrentMap != CurrentMap || monster.Node == null) return;
                     ElectricShock(monster, magic);
@@ -458,7 +458,7 @@ namespace Server.MirObjects
 
                 #region Poisoning
 
-                case Spell.施毒术:
+                case Spell.Poisoning:
                     value = (int)data[1];
                     target = (MapObject)data[2];
                     UserItem item = (UserItem)data[3];
@@ -533,7 +533,7 @@ namespace Server.MirObjects
 
                 #region Hiding
 
-                case Spell.隐身术:
+                case Spell.Hiding:
                     for (int i = 0; i < Buffs.Count; i++)
                         if (Buffs[i].Type == BuffType.Hiding) return;
 
@@ -546,7 +546,7 @@ namespace Server.MirObjects
 
                 #region Haste
 
-                case Spell.体迅风:
+                case Spell.Haste:
                     AddBuff(new Buff { Type = BuffType.Haste, Caster = this, ExpireTime = Envir.Time + (magic.Level + 1) * 30000, Values = new int[] { (magic.Level + 1) * 2 } });
                     LevelMagic(magic);
                     break;
@@ -555,7 +555,7 @@ namespace Server.MirObjects
 
                 #region Fury
 
-                case Spell.血龙剑法:
+                case Spell.Fury:
                     AddBuff(new Buff { Type = BuffType.Fury, Caster = this, ExpireTime = Envir.Time + 60000 + magic.Level * 10000, Values = new int[] { 4 }, Visible = true });
                     LevelMagic(magic);
                     break;
@@ -564,7 +564,7 @@ namespace Server.MirObjects
 
                 #region ImmortalSkin
 
-                case Spell.金刚不坏:
+                case Spell.ImmortalSkin:
                     int ACvalue = (int)Math.Round(MaxAC * (0.10 + (0.07 * magic.Level)));
                     int DCValue = (int)Math.Round(MaxDC * (0.05 + (0.01 * magic.Level)));
                     AddBuff(new Buff { Type = BuffType.ImmortalSkin, Caster = this, ExpireTime = Envir.Time + 60000 + magic.Level * 1000, Values = new int[] { ACvalue, DCValue }, Visible = true });
@@ -574,7 +574,7 @@ namespace Server.MirObjects
 
                 #region LightBody
 
-                case Spell.风身术:
+                case Spell.LightBody:
                     AddBuff(new Buff { Type = BuffType.LightBody, Caster = this, ExpireTime = Envir.Time + (magic.Level + 1) * 30000, Values = new int[] { (magic.Level + 1) * 2 } });
                     LevelMagic(magic);
                     break;
@@ -583,7 +583,7 @@ namespace Server.MirObjects
 
                 #region MagicShield
 
-                case Spell.魔法盾:
+                case Spell.MagicShield:
 
                     if (MagicShield) return;
                     MagicShield = true;
@@ -598,7 +598,7 @@ namespace Server.MirObjects
 
                 #region TurnUndead
 
-                case Spell.圣言术:
+                case Spell.TurnUndead:
                     monster = (MonsterObject)data[1];
                     if (monster == null || !monster.IsAttackTarget(this) || monster.CurrentMap != CurrentMap || monster.Node == null) return;
                     monster.LastHitter = this;
@@ -613,7 +613,7 @@ namespace Server.MirObjects
 
                 #region MagicBooster
 
-                case Spell.深延术:
+                case Spell.MagicBooster:
                     value = (int)data[1];
 
                     AddBuff(new Buff { Type = BuffType.MagicBooster, Caster = this, ExpireTime = Envir.Time + 60000, Values = new int[] { value, 6 + magic.Level }, Visible = true });
@@ -624,7 +624,7 @@ namespace Server.MirObjects
 
                 #region Purification
 
-                case Spell.净化术:
+                case Spell.Purification:
                     target = (MapObject)data[1];
 
                     if (target == null || !target.IsFriendlyTarget(this) || target.CurrentMap != CurrentMap || target.Node == null) return;
@@ -656,7 +656,7 @@ namespace Server.MirObjects
 
                 #region Revelation
 
-                case Spell.心灵启示:
+                case Spell.Revelation:
                     value = (int)data[1];
                     target = (MapObject)data[2];
                     if (target == null || target.CurrentMap != CurrentMap || target.Node == null) return;
@@ -674,7 +674,7 @@ namespace Server.MirObjects
 
                 #region Reincarnation
 
-                case Spell.苏生术:
+                case Spell.Reincarnation:
 
                     if (ReincarnationReady)
                     {
@@ -688,7 +688,7 @@ namespace Server.MirObjects
 
                 #region Entrapment
 
-                case Spell.捕绳剑:
+                case Spell.Entrapment:
                     value = (int)data[1];
                     target = (MapObject)data[2];
 
@@ -715,7 +715,7 @@ namespace Server.MirObjects
 
                 #region Hallucination
 
-                case Spell.迷魂术:
+                case Spell.Hallucination:
                     value = (int)data[1];
                     target = (MapObject)data[2];
 
@@ -736,7 +736,7 @@ namespace Server.MirObjects
 
                 #region PetEnhancer
 
-                case Spell.血龙水:
+                case Spell.PetEnhancer:
                     value = (int)data[1];
                     target = (MonsterObject)data[2];
 
@@ -751,7 +751,7 @@ namespace Server.MirObjects
 
                 #region ElementalBarrier, ElementalShot
 
-                case Spell.金刚术:
+                case Spell.ElementalBarrier:
                     if (ElementalBarrier) return;
                     if (!HasElemental)
                     {
@@ -772,7 +772,7 @@ namespace Server.MirObjects
                     CurrentMap.Broadcast(new S.ObjectEffect { ObjectID = ObjectID, Effect = SpellEffect.ElementalBarrierUp }, CurrentLocation);
                     break;
 
-                case Spell.万斤闪:
+                case Spell.ElementalShot:
                     value = (int)data[1];
                     target = (MapObject)data[2];
 
@@ -796,7 +796,7 @@ namespace Server.MirObjects
 
                 #region DelayedExplosion
 
-                case Spell.爆闪:
+                case Spell.DelayedExplosion:
                     value = (int)data[1];
                     target = (MapObject)data[2];
 
@@ -882,9 +882,9 @@ namespace Server.MirObjects
                 #endregion
 
                 #region VampireShot, PoisonShot, CrippleShot
-                case Spell.吸血地闪:
-                case Spell.毒魔闪:
-                case Spell.邪爆闪:
+                case Spell.VampireShot:
+                case Spell.PoisonShot:
+                case Spell.CrippleShot:
                     value = (int)data[1];
                     target = (MapObject)data[2];
 
@@ -897,7 +897,7 @@ namespace Server.MirObjects
                     bool hasPoisonBuff = (Buffs.Where(x => x.Type == BuffType.PoisonShot).ToList().Count() > 0);
 
                     bool doVamp = false, doPoison = false;
-                    if (magic.Spell == Spell.吸血地闪)
+                    if (magic.Spell == Spell.VampireShot)
                     {
                         doVamp = true;
                         if (!hasVampBuff && !hasPoisonBuff && (Envir.Random.Next(20) >= 8))//40% chance
@@ -906,7 +906,7 @@ namespace Server.MirObjects
                             BroadcastInfo();
                         }
                     }
-                    if (magic.Spell == Spell.毒魔闪)
+                    if (magic.Spell == Spell.PoisonShot)
                     {
                         doPoison = true;
                         if (!hasPoisonBuff && !hasVampBuff && (Envir.Random.Next(20) >= 8))//40% chance
@@ -915,7 +915,7 @@ namespace Server.MirObjects
                             BroadcastInfo();
                         }
                     }
-                    if (magic.Spell == Spell.邪爆闪)
+                    if (magic.Spell == Spell.CrippleShot)
                     {
                         if (hasVampBuff || hasPoisonBuff)
                         {
@@ -992,9 +992,9 @@ namespace Server.MirObjects
                 #endregion
 
                 #region ArcherSummons
-                case Spell.吸血地精:
-                case Spell.痹魔阱:
-                case Spell.蛇柱阱:
+                case Spell.SummonVampire:
+                case Spell.SummonToad:
+                case Spell.SummonSnakes:
                     value = (int)data[1];
                     location = (Point)data[2];
                     target = (MapObject)data[3];
@@ -1002,13 +1002,13 @@ namespace Server.MirObjects
                     int SummonType = 0;
                     switch (magic.Spell)
                     {
-                        case Spell.吸血地精:
+                        case Spell.SummonVampire:
                             SummonType = 1;
                             break;
-                        case Spell.痹魔阱:
+                        case Spell.SummonToad:
                             SummonType = 2;
                             break;
-                        case Spell.蛇柱阱:
+                        case Spell.SummonSnakes:
                             SummonType = 3;
                             break;
                     }
@@ -1078,8 +1078,8 @@ namespace Server.MirObjects
             {
                 switch (magic.Spell)
                 {
-                    case Spell.基本剑术:
-                    case Spell.精神力战法:
+                    case Spell.Fencing:
+                    case Spell.SpiritSword:
                         LevelMagic(magic);
                         break;
                 }
@@ -1538,7 +1538,7 @@ namespace Server.MirObjects
             ActiveBlizzard = false;
             ActiveReincarnation = false;
 
-            CounterAttackCast(GetMagic(Spell.天务), LastHitter);
+            CounterAttackCast(GetMagic(Spell.CounterAttack), LastHitter);
 
             //Enqueue(new S.Struck { AttackerID = attacker.ObjectID });
             Broadcast(new S.ObjectStruck { ObjectID = ObjectID, AttackerID = attacker.ObjectID, Direction = Direction, Location = CurrentLocation });
@@ -1719,7 +1719,7 @@ namespace Server.MirObjects
             ActiveBlizzard = false;
             ActiveReincarnation = false;
 
-            CounterAttackCast(GetMagic(Spell.天务), LastHitter);
+            CounterAttackCast(GetMagic(Spell.CounterAttack), LastHitter);
 
             //Enqueue(new S.Struck { AttackerID = attacker.ObjectID });
             Broadcast(new S.ObjectStruck { ObjectID = ObjectID, AttackerID = attacker.ObjectID, Direction = Direction, Location = CurrentLocation });
@@ -1848,7 +1848,7 @@ namespace Server.MirObjects
             ActiveBlizzard = false;
             ActiveReincarnation = false;
 
-            CounterAttackCast(GetMagic(Spell.天务), LastHitter);
+            CounterAttackCast(GetMagic(Spell.CounterAttack), LastHitter);
 
             if (StruckTime < Envir.Time)
             {
@@ -2374,7 +2374,7 @@ namespace Server.MirObjects
                     }
                 }
                 ItemInfo RealItem = Functions.GetRealItem(temp.Info, Info.Level, Info.Class, Envir.ItemInfoList);
-                if (RealItem.Type == ItemType.武器 || RealItem.Type == ItemType.火把)
+                if (RealItem.Type == ItemType.Weapon || RealItem.Type == ItemType.Torch)
                     CurrentHandWeight = (ushort)Math.Min(byte.MaxValue, CurrentHandWeight + temp.Weight);
                 else
                     CurrentWearWeight = (ushort)Math.Min(byte.MaxValue, CurrentWearWeight + temp.Weight);
@@ -2452,16 +2452,16 @@ namespace Server.MirObjects
                     FastRun = true;
                 }
 
-                if (RealItem.Type == ItemType.护甲)
+                if (RealItem.Type == ItemType.Armour)
                 {
                     Looks_Armour = RealItem.Shape;
                     Looks_Wings = RealItem.Effect;
                 }
 
-                if (RealItem.Type == ItemType.武器)
+                if (RealItem.Type == ItemType.Weapon)
                     Looks_Weapon = RealItem.Shape;
 
-                if (RealItem.Type == ItemType.坐骑)
+                if (RealItem.Type == ItemType.Mount)
                 {
                     //MountType = RealItem.Shape;
                     //RealItem.Effect;
@@ -2518,11 +2518,11 @@ namespace Server.MirObjects
         {
             foreach (var s in ItemSets)
             {
-                if ((s.Set == ItemSet.Smash) && (s.Type.Contains(ItemType.戒指)) && (s.Type.Contains(ItemType.手镯)))
+                if ((s.Set == ItemSet.Smash) && (s.Type.Contains(ItemType.Ring)) && (s.Type.Contains(ItemType.Bracelet)))
                     ASpeed = (sbyte)Math.Min(sbyte.MaxValue, ASpeed + 2);
-                if ((s.Set == ItemSet.Purity) && (s.Type.Contains(ItemType.戒指)) && (s.Type.Contains(ItemType.手镯)))
+                if ((s.Set == ItemSet.Purity) && (s.Type.Contains(ItemType.Ring)) && (s.Type.Contains(ItemType.Bracelet)))
                     Holy = Math.Min(byte.MaxValue, (byte)(Holy + 3));
-                if ((s.Set == ItemSet.HwanDevil) && (s.Type.Contains(ItemType.戒指)) && (s.Type.Contains(ItemType.手镯)))
+                if ((s.Set == ItemSet.HwanDevil) && (s.Type.Contains(ItemType.Ring)) && (s.Type.Contains(ItemType.Bracelet)))
                 {
                     MaxWearWeight = (ushort)Math.Min(ushort.MaxValue, MaxWearWeight + 5);
                     MaxBagWeight = (ushort)Math.Min(ushort.MaxValue, MaxBagWeight + 20);
@@ -2747,14 +2747,14 @@ namespace Server.MirObjects
                 HeroMagic magic = Info.Magics[i];
                 switch (magic.Spell)
                 {
-                    case Spell.基本剑术:
+                    case Spell.Fencing:
                         Accuracy = (byte)Math.Min(byte.MaxValue, Accuracy + magic.Level * 3);
                         MaxAC = (ushort)Math.Min(ushort.MaxValue, MaxAC + (magic.Level + 1) * 3);
                         break;
-                    case Spell.绝命剑法:
+                    case Spell.FatalSword:
                         Accuracy = (byte)Math.Min(byte.MaxValue, Accuracy + magic.Level);
                         break;
-                    case Spell.精神力战法:
+                    case Spell.SpiritSword:
                         Accuracy = (byte)Math.Min(byte.MaxValue, Accuracy + magic.Level);
                         MaxDC = (ushort)Math.Min(ushort.MaxValue, MaxDC + MaxSC * (magic.Level + 1) * 0.1F);
                         break;
@@ -2974,13 +2974,13 @@ namespace Server.MirObjects
 
         public void GatherElement()
         {
-            HeroMagic magic = GetMagic(Spell.气功术);
+            HeroMagic magic = GetMagic(Spell.Meditation);
 
             if (magic == null) return;
 
             int MeditationLvl = magic.Level;
 
-            magic = GetMagic(Spell.气流术);
+            magic = GetMagic(Spell.Concentration);
 
             int ConcentrateLvl = magic != null ? magic.Level : -1;
 
@@ -2997,7 +2997,7 @@ namespace Server.MirObjects
                 if (rnd >= (MeditateChance - ConcentrateChance))
                 {
                     ObtainElement(false);
-                    LevelMagic(GetMagic(Spell.气功术));
+                    LevelMagic(GetMagic(Spell.Meditation));
                 }
             }
         }
@@ -3006,7 +3006,7 @@ namespace Server.MirObjects
             int orbType = 0;
             int meditateLevel = 0;
 
-            HeroMagic spell = GetMagic(Spell.气功术);
+            HeroMagic spell = GetMagic(Spell.Meditation);
 
             if (spell == null)
             {
@@ -3039,10 +3039,10 @@ namespace Server.MirObjects
                 ElementsLevel++;
 
                 if (Settings.GatherOrbsPerLevel)//Meditation Orbs per level
-                    if (ElementsLevel > Settings.OrbsExpList[GetMagic(Spell.气功术).Level])
+                    if (ElementsLevel > Settings.OrbsExpList[GetMagic(Spell.Meditation).Level])
                     {
                         HasElemental = true;
-                        ElementsLevel = (int)Settings.OrbsExpList[GetMagic(Spell.气功术).Level];
+                        ElementsLevel = (int)Settings.OrbsExpList[GetMagic(Spell.Meditation).Level];
                         return;
                     }
 
@@ -4028,7 +4028,7 @@ namespace Server.MirObjects
                     if (cell.Objects[i].Race != ObjectType.Spell) continue;
                     SpellObject ob = (SpellObject)cell.Objects[i];
 
-                    if (ob.Spell != Spell.火墙 || !IsAttackTarget(ob.Caster)) continue;
+                    if (ob.Spell != Spell.FireWall || !IsAttackTarget(ob.Caster)) continue;
                     Attacked(ob.Caster, ob.Value, DefenceType.MAC, false);
                     break;
                 }
@@ -4146,7 +4146,7 @@ namespace Server.MirObjects
 
             if (Functions.InRange(CurrentLocation, target.CurrentLocation, 1) == false) return;
             if (Envir.Random.Next(10) > magic.Level + 6) return;
-            Player.Enqueue(new S.ObjectMagic { ObjectID = ObjectID, Direction = Direction, Location = CurrentLocation, Spell = Spell.天务, TargetID = target.ObjectID, Target = target.CurrentLocation, Cast = true, Level = GetMagic(Spell.天务).Level, SelfBroadcast = true });
+            Player.Enqueue(new S.ObjectMagic { ObjectID = ObjectID, Direction = Direction, Location = CurrentLocation, Spell = Spell.CounterAttack, TargetID = target.ObjectID, Target = target.CurrentLocation, Cast = true, Level = GetMagic(Spell.CounterAttack).Level, SelfBroadcast = true });
             DelayedAction action = new DelayedAction(DelayedType.Damage, AttackTime, target, damageFinal, DefenceType.AC, true);
             ActionList.Add(action);
             LevelMagic(magic);
@@ -4613,7 +4613,7 @@ namespace Server.MirObjects
             if ((Info.MentalState != 1) && !CanFly(target.CurrentLocation)) return;
             int distance = Functions.MaxDistance(CurrentLocation, target.CurrentLocation);
             int damage = magic.GetDamage(GetAttackPower(MinMC, MaxMC));
-            if (magic.Spell != Spell.邪爆闪)
+            if (magic.Spell != Spell.CrippleShot)
                 damage = (int)(damage * Math.Max(1, (distance * 0.4)));//range boost
             damage = ApplyArcherState(damage);
 
@@ -4705,7 +4705,7 @@ namespace Server.MirObjects
                     item.Info = ctx.ItemInfos.FirstOrDefault(i => i.Index == item.ItemIndex);
                 }
             }
-            if (item == null || item.CurrentDura == 0 || item.Info.Type == ItemType.护身符) return;
+            if (item == null || item.CurrentDura == 0 || item.Info.Type == ItemType.Amulet) return;
             //if ((item.WeddingRing == Info.Married) && (Info.Equipment[(int)EquipmentSlot.RingL].UniqueID == item.UniqueID)) return;
             if (item.Info.Strong > 0) amount = Math.Max(1, amount - item.Info.Strong);
             item.CurrentDura = (ushort)Math.Max(ushort.MinValue, item.CurrentDura - amount);
@@ -4869,7 +4869,7 @@ namespace Server.MirObjects
                         item.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == item.ItemIndex);
                     }
                 }
-                if (item != null && item.Info.Type == ItemType.护身符 && item.Count >= count)
+                if (item != null && item.Info.Type == ItemType.Amulet && item.Count >= count)
                 {
                     if (shape == 0)
                     {
@@ -4934,7 +4934,7 @@ namespace Server.MirObjects
                         item.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == item.ItemIndex);
                     }
                 }
-                if (item != null && item.Info.Type == ItemType.护身符 && item.Info.Shape == shape && item.Count >= count)
+                if (item != null && item.Info.Type == ItemType.Amulet && item.Info.Shape == shape && item.Count >= count)
                     return item;
             }
 
@@ -5867,7 +5867,7 @@ namespace Server.MirObjects
                     {
                         case ObjectType.Player:
                             PlayerObject caster = (PlayerObject)poison.Owner;
-                            DelayedAction action = new DelayedAction(DelayedType.Magic, Envir.Time, poison.Owner, caster.GetMagic(Spell.爆闪), poison.Value, this.CurrentLocation);
+                            DelayedAction action = new DelayedAction(DelayedType.Magic, Envir.Time, poison.Owner, caster.GetMagic(Spell.DelayedExplosion), poison.Value, this.CurrentLocation);
                             CurrentMap.ActionList.Add(action);
                             //Attacked((PlayerObject)poison.Owner, poison.Value, DefenceType.MAC, false);
                             break;

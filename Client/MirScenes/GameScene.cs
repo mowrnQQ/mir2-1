@@ -713,7 +713,7 @@ public NewHeroDialog NewHeroDialog;
 
             switch (magic.Spell)
             {
-                case Spell.天务:
+                case Spell.CounterAttack:
                     if ((CMain.Time < magic.CastTime + magic.Delay) && magic.CastTime != 0)
                     {
                         if (CMain.Time >= OutputDelay)
@@ -731,44 +731,44 @@ public NewHeroDialog NewHeroDialog;
             int cost;
             switch (magic.Spell)
             {
-                case Spell.基本剑术:
-                case Spell.绝命剑法:
-                case Spell.吸气:
-                case Spell.血风击:
-                case Spell.精神力战法:
-                case Spell.攻杀剑术:
-                case Spell.必中闪:
-                case Spell.气功术:
+                case Spell.Fencing:
+                case Spell.FatalSword:
+                case Spell.MPEater:
+                case Spell.Hemorrhage:
+                case Spell.SpiritSword:
+                case Spell.Slaying:
+                case Spell.Focus:
+                case Spell.Meditation:
                     return;
-                case Spell.刺杀剑术:
+                case Spell.Thrusting:
                     if (CMain.Time < ToggleTime) return;
                     Thrusting = !Thrusting;
                     ChatDialog.ReceiveChat(Thrusting ? "使用 刺杀剑术." : "不使用 刺杀剑术.", ChatType.Hint);
                     ToggleTime = CMain.Time + 1000;
                     Network.Enqueue(new C.SpellToggle { Spell = magic.Spell, CanUse = Thrusting });
                     break;
-                case Spell.半月弯刀:
+                case Spell.HalfMoon:
                     if (CMain.Time < ToggleTime) return;
                     HalfMoon = !HalfMoon;
                     ChatDialog.ReceiveChat(HalfMoon ? "使用 半月弯刀." : "不使用 半月弯刀.", ChatType.Hint);
                     ToggleTime = CMain.Time + 1000;
                     Network.Enqueue(new C.SpellToggle { Spell = magic.Spell, CanUse = HalfMoon });
                     break;
-                case Spell.狂风斩:
+                case Spell.CrossHalfMoon:
                     if (CMain.Time < ToggleTime) return;
                     CrossHalfMoon = !CrossHalfMoon;
                     ChatDialog.ReceiveChat(CrossHalfMoon ? "使用 狂风斩." : "不使用 狂风斩.", ChatType.Hint);
                     ToggleTime = CMain.Time + 1000;
                     Network.Enqueue(new C.SpellToggle { Spell = magic.Spell, CanUse = CrossHalfMoon });
                     break;
-                case Spell.风剑术:
+                case Spell.DoubleSlash:
                     if (CMain.Time < ToggleTime) return;
                     DoubleSlash = !DoubleSlash;
                     ChatDialog.ReceiveChat(DoubleSlash ? "使用 Double Slash." : "不使用 Double Slash.", ChatType.Hint);
                     ToggleTime = CMain.Time + 1000;
                     Network.Enqueue(new C.SpellToggle { Spell = magic.Spell, CanUse = DoubleSlash });
                     break;
-                case Spell.双龙斩:
+                case Spell.TwinDrakeBlade:
                     if (CMain.Time < ToggleTime) return;
                     ToggleTime = CMain.Time + 500;
 
@@ -782,7 +782,7 @@ public NewHeroDialog NewHeroDialog;
                     Network.Enqueue(new C.SpellToggle { Spell = magic.Spell, CanUse = true });
                     User.Effects.Add(new Effect(Libraries.Magic2, 210, 6, 500, User));
                     break;
-                case Spell.烈火剑法:
+                case Spell.FlamingSword:
                     if (CMain.Time < ToggleTime) return;
                     ToggleTime = CMain.Time + 500;
 
@@ -794,7 +794,7 @@ public NewHeroDialog NewHeroDialog;
                     }
                     Network.Enqueue(new C.SpellToggle { Spell = magic.Spell, CanUse = true });
                     break;
-                case Spell.天务:
+                case Spell.CounterAttack:
                     cost = magic.Level * magic.LevelCost + magic.BaseCost;
                     if (cost > MapObject.User.MP)
                     {
@@ -802,7 +802,7 @@ public NewHeroDialog NewHeroDialog;
                         return;
                     }
 
-                    SoundManager.PlaySound(20000 + (ushort)Spell.天务 * 10);
+                    SoundManager.PlaySound(20000 + (ushort)Spell.CounterAttack * 10);
                     Network.Enqueue(new C.SpellToggle { Spell = magic.Spell, CanUse = true });
                     break;
                 case Spell.MentalState:
@@ -2288,9 +2288,9 @@ public NewHeroDialog NewHeroDialog;
                     return;
             }
 
-            if (p.Grid == MirGridType.Inventory && (p.Item.Info.Type == ItemType.药剂 || p.Item.Info.Type == ItemType.卷轴 || p.Item.Info.Type == ItemType.护身符))
+            if (p.Grid == MirGridType.Inventory && (p.Item.Info.Type == ItemType.Potion || p.Item.Info.Type == ItemType.Scroll || p.Item.Info.Type == ItemType.Amulet))
             {
-                if (p.Item.Info.Type == ItemType.药剂 || p.Item.Info.Type == ItemType.卷轴)
+                if (p.Item.Info.Type == ItemType.Potion || p.Item.Info.Type == ItemType.Scroll)
                 {
                     for (int i = 0; i < 4; i++)
                     {
@@ -2300,7 +2300,7 @@ public NewHeroDialog NewHeroDialog;
                         return;
                     }
                 }
-                else if (p.Item.Info.Type == ItemType.护身符)
+                else if (p.Item.Info.Type == ItemType.Amulet)
                 {
                     for (int i = 4; i < GameScene.User.BeltIdx; i++)
                     {
@@ -2798,7 +2798,7 @@ public NewHeroDialog NewHeroDialog;
                         effect.Remove();
 
                         User.Effects.Add(effect = new BuffEffect(Libraries.Magic2, 1890, 6, 600, User, true, BuffType.EnergyShield) { Repeat = false });
-                        SoundManager.PlaySound(20000 + (ushort)Spell.先天气功 * 10 + 1);
+                        SoundManager.PlaySound(20000 + (ushort)Spell.EnergyShield * 10 + 1);
                         
                         effect.Complete += (o, e) =>
                         {
@@ -2847,7 +2847,7 @@ public NewHeroDialog NewHeroDialog;
                             effect.Remove();
 
                             ob.Effects.Add(effect = new BuffEffect(Libraries.Magic2, 1890, 6, 600, ob, true, BuffType.EnergyShield) { Repeat = false });
-                            SoundManager.PlaySound(20000 + (ushort)Spell.先天气功 * 10 + 1);
+                            SoundManager.PlaySound(20000 + (ushort)Spell.EnergyShield * 10 + 1);
 
                             effect.Complete += (o, e) =>
                             {
@@ -2932,7 +2932,7 @@ public NewHeroDialog NewHeroDialog;
                 User.RefreshStats();
                 switch (item.Info.Type)
                 {
-                    case ItemType.坐骑:
+                    case ItemType.Mount:
                         ChatDialog.ReceiveChat(string.Format("{0} 叛变了.", item.Info.Name), ChatType.System);
                         break;
                     default:
@@ -3049,7 +3049,7 @@ public NewHeroDialog NewHeroDialog;
                         ob.Remove();
                         break;
                     case 2:
-                        SoundManager.PlaySound(20000 + (ushort)Spell.烈火身 * 10 + 1);
+                        SoundManager.PlaySound(20000 + (ushort)Spell.DarkBody * 10 + 1);
                         MapControl.Effects.Add(new Effect(Libraries.Magic2, 2600, 10, 1200, ob.CurrentLocation));
                         ob.Remove();
                         break;
@@ -3652,7 +3652,7 @@ public NewHeroDialog NewHeroDialog;
                 {
                     case SpellEffect.FatalSword:
                         ob.Effects.Add(new Effect(Libraries.Magic2, 1940, 4, 400, ob));
-                        SoundManager.PlaySound(20000 + (ushort)Spell.绝命剑法 * 10);
+                        SoundManager.PlaySound(20000 + (ushort)Spell.FatalSword * 10);
                         break;
                     case SpellEffect.StormEscape:
                         ob.Effects.Add(new Effect(Libraries.Magic3, 610, 10, 600, ob));
@@ -3663,7 +3663,7 @@ public NewHeroDialog NewHeroDialog;
                         SoundManager.PlaySound(SoundList.Teleport);
                         break;
                     case SpellEffect.Healing:
-                        SoundManager.PlaySound(20000 + (ushort)Spell.治愈术 * 10 + 1);
+                        SoundManager.PlaySound(20000 + (ushort)Spell.Healing * 10 + 1);
                         ob.Effects.Add(new Effect(Libraries.Magic, 370, 10, 800, ob));
                         break;
                     case SpellEffect.RedMoonEvil:
@@ -3683,13 +3683,13 @@ public NewHeroDialog NewHeroDialog;
                             }
                         }
                         ob.Effects.Add(new Effect(Libraries.Magic2, 2400, 9, 900, ob));
-                        SoundManager.PlaySound(20000 + (ushort)Spell.绝命剑法 * 10);
+                        SoundManager.PlaySound(20000 + (ushort)Spell.FatalSword * 10);
                         break;
                     case SpellEffect.Bleeding:
                         ob.Effects.Add(new Effect(Libraries.Magic3, 60, 3, 400, ob));
                         break;
                     case SpellEffect.Hemorrhage:
-                        SoundManager.PlaySound(20000 + (ushort)Spell.血风击 * 10);
+                        SoundManager.PlaySound(20000 + (ushort)Spell.Hemorrhage * 10);
                         ob.Effects.Add(new Effect(Libraries.Magic3, 0, 4, 400, ob));
                         ob.Effects.Add(new Effect(Libraries.Magic3, 28, 6, 600, ob));
                         ob.Effects.Add(new Effect(Libraries.Magic3, 46, 8, 800, ob));
@@ -3811,7 +3811,7 @@ public NewHeroDialog NewHeroDialog;
                     case SpellEffect.TurtleKing:
                         {
                             Effect ef = new Effect(Libraries.Monsters[(ushort)Monster.TurtleKing], CMain.Random.Next(2) == 0 ? 922 : 934, 12, 1200, ob);
-                            ef.Played += (o, e) => SoundManager.PlaySound(20000 + (ushort)Spell.地狱火 * 10 + 1);
+                            ef.Played += (o, e) => SoundManager.PlaySound(20000 + (ushort)Spell.HellFire * 10 + 1);
                             ob.Effects.Add(ef);
                         }
                         break;
@@ -3945,26 +3945,26 @@ public NewHeroDialog NewHeroDialog;
             switch (p.Spell)
             {
                 //Warrior
-                case Spell.攻杀剑术:
+                case Spell.Slaying:
                     Slaying = p.CanUse;
                     break;
-                case Spell.刺杀剑术:
+                case Spell.Thrusting:
                     Thrusting = p.CanUse;
                     ChatDialog.ReceiveChat(Thrusting ? "使用 刺杀剑术." : "不使用 刺杀剑术.", ChatType.Hint);
                     break;
-                case Spell.半月弯刀:
+                case Spell.HalfMoon:
                     HalfMoon = p.CanUse;
                     ChatDialog.ReceiveChat(HalfMoon ? "使用 半月弯刀." : "不使用 半月弯刀.", ChatType.Hint);
                     break;
-                case Spell.狂风斩:
+                case Spell.CrossHalfMoon:
                     CrossHalfMoon = p.CanUse;
                     ChatDialog.ReceiveChat(CrossHalfMoon ? "使用 狂风斩." : "不使用 狂风斩.", ChatType.Hint);
                     break;
-                case Spell.风剑术:
+                case Spell.DoubleSlash:
                     DoubleSlash = p.CanUse;
                     ChatDialog.ReceiveChat(DoubleSlash ? "使用 DoubleSlash." : "不使用 DoubleSlash.", ChatType.Hint);
                     break;
-                case Spell.烈火剑法:
+                case Spell.FlamingSword:
                     FlamingSword = p.CanUse;
                     if (FlamingSword)
                         ChatDialog.ReceiveChat("你的武器因烈火精灵而炙热.", ChatType.Hint);
@@ -5431,7 +5431,7 @@ public NewHeroDialog NewHeroDialog;
                 }
             }
 
-            if (item.Info.Type == ItemType.药剂 || item.Info.Type == ItemType.卷轴)
+            if (item.Info.Type == ItemType.Potion || item.Info.Type == ItemType.Scroll)
             {
                 for (int i = 0; i < User.BeltIdx - 2; i++)
                 {
@@ -5440,7 +5440,7 @@ public NewHeroDialog NewHeroDialog;
                     return;
                 }
             }
-            else if (item.Info.Type == ItemType.护身符)
+            else if (item.Info.Type == ItemType.Amulet)
             {
                 for (int i = 4; i < User.BeltIdx; i++)
                 {
@@ -5503,13 +5503,13 @@ public NewHeroDialog NewHeroDialog;
         {
             switch (grade)
             {
-                case ItemGrade.普通:
+                case ItemGrade.Common:
                     return Color.Yellow;
-                case ItemGrade.稀有:
+                case ItemGrade.Rare:
                     return Color.DeepSkyBlue;
-                case ItemGrade.传奇:
+                case ItemGrade.Legendary:
                     return Color.DarkOrange;
-                case ItemGrade.史诗:
+                case ItemGrade.Mythical:
                     return Color.Plum;
                 default:
                     return Color.Yellow;
@@ -5555,8 +5555,8 @@ public NewHeroDialog NewHeroDialog;
                 Location = new Point(4, 4),
                 OutLine = true,
                 Parent = ItemLabel,
-                Text = HoverItem.Info.Grade != ItemGrade.无 ? HoverItem.Info.FriendlyName + "\n" + HoverItem.Info.Grade.ToString() : 
-                (HoverItem.Info.Type == ItemType.宠物 && HoverItem.Info.Shape == 26 && HoverItem.Info.Effect != 7) ? "WonderDrug" : HoverItem.Info.FriendlyName,
+                Text = HoverItem.Info.Grade != ItemGrade.None ? HoverItem.Info.FriendlyName + "\n" + HoverItem.Info.Grade.ToString() : 
+                (HoverItem.Info.Type == ItemType.Pets && HoverItem.Info.Shape == 26 && HoverItem.Info.Effect != 7) ? "WonderDrug" : HoverItem.Info.FriendlyName,
             };
 
             if (HoverItem.RefineAdded > 0)
@@ -5576,28 +5576,28 @@ public NewHeroDialog NewHeroDialog;
             {
                 switch (HoverItem.Info.Type)
                 {
-                    case ItemType.护身符:
+                    case ItemType.Amulet:
                         text += string.Format(" 耐久 {0}/{1}", HoverItem.CurrentDura, HoverItem.MaxDura);
                         break;
-                    case ItemType.矿物:
+                    case ItemType.Ore:
                         text += string.Format(" 纯度 {0}", Math.Round(HoverItem.CurrentDura / 1000M));
                         break;
-                    case ItemType.肉:
+                    case ItemType.Meat:
                         text += string.Format(" 质量 {0}", Math.Round(HoverItem.CurrentDura / 1000M));
                         break;
-                    case ItemType.坐骑:
+                    case ItemType.Mount:
                         text += string.Format(" 忠诚 {0} / {1}", HoverItem.CurrentDura, HoverItem.MaxDura);
                         break;
-                    case ItemType.食物:
+                    case ItemType.Food:
                         text += string.Format(" 营养 {0}", HoverItem.CurrentDura);
                         break;
-                    case ItemType.宝玉:
+                    case ItemType.Gem:
                         break;
-                    case ItemType.药剂:
+                    case ItemType.Potion:
                         break;
-                    case ItemType.变换:
+                    case ItemType.Transform:
                         break;
-                    case ItemType.宠物:
+                    case ItemType.Pets:
                         if (HoverItem.Info.Shape == 26)//WonderDrug
                         {
                             string strTime = Functions.PrintTimeSpanFromSeconds((HoverItem.CurrentDura * 3600), false);
@@ -5665,18 +5665,18 @@ public NewHeroDialog NewHeroDialog;
 
             switch (HoverItem.Info.Type)
             {
-                case ItemType.鱼钩:
+                case ItemType.Hook:
                 case ItemType.Float:
-                case ItemType.饵:
+                case ItemType.Bait:
                 case ItemType.Finder:
                 case ItemType.Reel:
                     fishingItem = true;
                     break;
-                case ItemType.武器:
+                case ItemType.Weapon:
                     if (HoverItem.Info.Shape == 49 || HoverItem.Info.Shape == 50)
                         fishingItem = true;
                     break;
-                case ItemType.宠物:
+                case ItemType.Pets:
                     if (HoverItem.Info.Shape == 26) return null;
                     break;
                 default:
@@ -5693,7 +5693,7 @@ public NewHeroDialog NewHeroDialog;
             #region Dura gem
             minValue = realItem.Durability;
 
-            if (minValue > 0 &&  realItem.Type == ItemType.宝玉)
+            if (minValue > 0 &&  realItem.Type == ItemType.Gem)
             {
                 count++;
                 text = string.Format("增加 {0} 耐久", minValue / 1000);
@@ -5721,7 +5721,7 @@ public NewHeroDialog NewHeroDialog;
             if (minValue > 0 || maxValue > 0 || addValue > 0)
             {
                 count++;
-                if (HoverItem.Info.Type != ItemType.宝玉)
+                if (HoverItem.Info.Type != ItemType.Gem)
                     text = string.Format(addValue > 0 ? "攻击 + {0}~{1} (+{2})" : "攻击 + {0}~{1}", minValue, maxValue + addValue, addValue);
                 else
                     text = string.Format("增加 {0} 攻击", minValue + maxValue + addValue);
@@ -5751,7 +5751,7 @@ public NewHeroDialog NewHeroDialog;
             if (minValue > 0 || maxValue > 0 || addValue > 0)
             {
                 count++;
-                if (HoverItem.Info.Type != ItemType.宝玉)
+                if (HoverItem.Info.Type != ItemType.Gem)
                     text = string.Format(addValue > 0 ? "魔法 + {0}~{1} (+{2})" : "魔法 + {0}~{1}", minValue, maxValue + addValue, addValue);
                 else
                     text = string.Format("增加 {0} 魔法", minValue + maxValue + addValue);
@@ -5781,7 +5781,7 @@ public NewHeroDialog NewHeroDialog;
             if (minValue > 0 || maxValue > 0 || addValue > 0)
             {
                 count++;
-                if (HoverItem.Info.Type != ItemType.宝玉)
+                if (HoverItem.Info.Type != ItemType.Gem)
                     text = string.Format(addValue > 0 ? "道术 + {0}~{1} (+{2})" : "道术 + {0}~{1}", minValue, maxValue + addValue, addValue);
                 else
                     text = string.Format("增加 {0} 道术", minValue + maxValue + addValue);
@@ -5812,11 +5812,11 @@ public NewHeroDialog NewHeroDialog;
             {
                 count++;
 
-                if(realItem.Type == ItemType.宠物 && realItem.Shape == 28)
+                if(realItem.Type == ItemType.Pets && realItem.Shape == 28)
                 {
                     text = string.Format("背包重量 + {0}% ", minValue + addValue);
                 }
-                else if (realItem.Type == ItemType.药剂 && realItem.Shape == 4)
+                else if (realItem.Type == ItemType.Potion && realItem.Shape == 4)
                 {
                     text = string.Format("经验 + {0}% ", minValue + addValue);
                 }
@@ -5852,7 +5852,7 @@ public NewHeroDialog NewHeroDialog;
             if (minValue > 0 || maxValue > 0 || addValue > 0)
             {
                 count++;
-                if (HoverItem.Info.Type != ItemType.宝玉)
+                if (HoverItem.Info.Type != ItemType.Gem)
                     text = string.Format(addValue > 0 ? "准确: + {0} (+{1})" : "准确: + {0}", minValue + addValue, addValue);
                 else
                     text = string.Format("增加 {0} 准确", minValue + maxValue + addValue);
@@ -5910,7 +5910,7 @@ public NewHeroDialog NewHeroDialog;
                 string plus = (addValue + minValue < 0) ? "" : "+";
 
                 count++;
-                if (HoverItem.Info.Type != ItemType.宝玉)
+                if (HoverItem.Info.Type != ItemType.Gem)
                 {
                     string negative = "+";
                     if (addValue < 0) negative = "";
@@ -5945,7 +5945,7 @@ public NewHeroDialog NewHeroDialog;
             if (minValue > 0 || maxValue > 0 || addValue > 0)
             {
                 count++;
-                if (HoverItem.Info.Type != ItemType.宝玉)
+                if (HoverItem.Info.Type != ItemType.Gem)
                     text = string.Format(addValue > 0 ? "减速: + {0} (+{1})" : "减速: + {0}", minValue + addValue, addValue);
                 else
                     text = string.Format("增加 {0} 减速", minValue + maxValue + addValue);
@@ -5975,7 +5975,7 @@ public NewHeroDialog NewHeroDialog;
             if (minValue > 0 || maxValue > 0 || addValue > 0)
             {
                 count++;
-                if (HoverItem.Info.Type != ItemType.宝玉)
+                if (HoverItem.Info.Type != ItemType.Gem)
                     text = string.Format(addValue > 0 ? "中毒: + {0} (+{1})" : "中毒: + {0}", minValue + addValue, addValue);
                 else
                     text = string.Format("增加 {0} 中毒", minValue + maxValue + addValue);
@@ -6002,7 +6002,7 @@ public NewHeroDialog NewHeroDialog;
             maxValue = 0;
             addValue = (!HoverItem.Info.NeedIdentify || HoverItem.Identified) ? HoverItem.CriticalRate : 0;
 
-            if ((minValue > 0 || maxValue > 0 || addValue > 0) && (realItem.Type != ItemType.宝玉))
+            if ((minValue > 0 || maxValue > 0 || addValue > 0) && (realItem.Type != ItemType.Gem))
             {
                 count++;                    
                 MirLabel CRITICALRATELabel = new MirLabel
@@ -6033,7 +6033,7 @@ public NewHeroDialog NewHeroDialog;
             maxValue = 0;
             addValue = (!HoverItem.Info.NeedIdentify || HoverItem.Identified) ? HoverItem.CriticalDamage : 0;
 
-            if ((minValue > 0 || maxValue > 0 || addValue > 0) && (realItem.Type != ItemType.宝玉))
+            if ((minValue > 0 || maxValue > 0 || addValue > 0) && (realItem.Type != ItemType.Gem))
             {
                 count++;
                 MirLabel CRITICALDAMAGELabel = new MirLabel
@@ -6059,7 +6059,7 @@ public NewHeroDialog NewHeroDialog;
             maxValue = 0;
             addValue = 0;
 
-            if ((minValue > 0 || maxValue > 0 || addValue > 0) && (realItem.Type != ItemType.宝玉))
+            if ((minValue > 0 || maxValue > 0 || addValue > 0) && (realItem.Type != ItemType.Gem))
             {
                 count++;
                 MirLabel ReflectLabel = new MirLabel
@@ -6084,7 +6084,7 @@ public NewHeroDialog NewHeroDialog;
             maxValue = 0;
             addValue = 0;
 
-            if ((minValue > 0 || maxValue > 0 || addValue > 0) && (realItem.Type != ItemType.宝玉))
+            if ((minValue > 0 || maxValue > 0 || addValue > 0) && (realItem.Type != ItemType.Gem))
             {
                 count++;
                 MirLabel HPdrainLabel = new MirLabel
@@ -6142,18 +6142,18 @@ public NewHeroDialog NewHeroDialog;
 
             switch (HoverItem.Info.Type)
             {
-                case ItemType.鱼钩:
+                case ItemType.Hook:
                 case ItemType.Float:
-                case ItemType.饵:
+                case ItemType.Bait:
                 case ItemType.Finder:
                 case ItemType.Reel:
                     fishingItem = true;
                     break;
-                case ItemType.武器:
+                case ItemType.Weapon:
                     if (HoverItem.Info.Shape == 49 || HoverItem.Info.Shape == 50)
                         fishingItem = true;
                     break;
-                case ItemType.宠物:
+                case ItemType.Pets:
                     if (HoverItem.Info.Shape == 26) return null;
                     break;
                 default:
@@ -6176,7 +6176,7 @@ public NewHeroDialog NewHeroDialog;
             if (minValue > 0 || maxValue > 0 || addValue > 0)
             {
                 count++;
-                if (HoverItem.Info.Type != ItemType.宝玉)
+                if (HoverItem.Info.Type != ItemType.Gem)
                     text = string.Format(addValue > 0 ? "防御 + {0}~{1} (+{2})" : "防御 + {0}~{1}", minValue, maxValue + addValue, addValue);
                 else
                     text = string.Format("增加 {0} 防御", minValue + maxValue + addValue);
@@ -6222,7 +6222,7 @@ public NewHeroDialog NewHeroDialog;
             if (minValue > 0 || maxValue > 0 || addValue > 0)
             {
                 count++;
-                if (HoverItem.Info.Type != ItemType.宝玉)
+                if (HoverItem.Info.Type != ItemType.Gem)
                     text = string.Format(addValue > 0 ? "魔法防御 + {0}~{1} (+{2})" : "魔法防御 + {0}~{1}", minValue, maxValue + addValue, addValue);
                 else
                     text = string.Format("增加 {0} 魔法防御", minValue + maxValue + addValue);
@@ -6265,7 +6265,7 @@ public NewHeroDialog NewHeroDialog;
                     OutLine = true,
                     Parent = ItemLabel,
                     //Text = string.Format(realItem.Type == ItemType.Potion ? "HP + {0} Recovery" : "MAXHP + {0}", minValue + addValue)
-                    Text = realItem.Type == ItemType.药剂 ? 
+                    Text = realItem.Type == ItemType.Potion ? 
                     string.Format(addValue > 0 ? " + {0} 生命值回复 (+{1})" : " + {0} 生命值回复", minValue + addValue, addValue)
                     : string.Format(addValue > 0 ? "最大生命值 + {0} (+{1})" : "最大生命值 + {0}", minValue + addValue, addValue)
                 };
@@ -6293,7 +6293,7 @@ public NewHeroDialog NewHeroDialog;
                     OutLine = true,
                     Parent = ItemLabel,
                     //Text = string.Format(realItem.Type == ItemType.Potion ? "MP + {0} Recovery" : "MAXMP + {0}", minValue + addValue)
-                    Text = realItem.Type == ItemType.药剂 ? 
+                    Text = realItem.Type == ItemType.Potion ? 
                     string.Format(addValue > 0 ? "+ {0} 魔法值回复 (+{1})" : "+ {0} 魔法值回复", minValue + addValue, addValue)
                     : string.Format(addValue > 0 ? "最大魔法值 + {0} (+{1})" : "最大魔法值P + {0}", minValue + addValue, addValue)
                 };
@@ -6543,7 +6543,7 @@ public NewHeroDialog NewHeroDialog;
             if (minValue > 0 || maxValue > 0 || addValue > 0)
             {
                 count++;
-                if (HoverItem.Info.Type != ItemType.宝玉)
+                if (HoverItem.Info.Type != ItemType.Gem)
                     text = string.Format(addValue > 0 ? "毒物躲避 + {0} (+{1})" : "毒物躲避 + {0}", minValue + addValue, addValue);
                 else
                     text = string.Format("增加 {0} 毒物躲避", minValue + maxValue + addValue);
@@ -6573,7 +6573,7 @@ public NewHeroDialog NewHeroDialog;
             if (minValue > 0 || maxValue > 0 || addValue > 0)
             {
                 count++;
-                if (HoverItem.Info.Type != ItemType.宝玉)
+                if (HoverItem.Info.Type != ItemType.Gem)
                     text = string.Format(addValue > 0 ? "魔法躲避 + {0} (+{1})" : "魔法躲避 + {0}", minValue + addValue, addValue);
                 else
                     text = string.Format("增加 {0} 魔法躲避", minValue + maxValue + addValue);
@@ -6741,7 +6741,7 @@ public NewHeroDialog NewHeroDialog;
             maxValue = 0;
             addValue = 0;
 
-            if (HoverItem.Info.Type == ItemType.药剂 && HoverItem.Info.Durability > 0)
+            if (HoverItem.Info.Type == ItemType.Potion && HoverItem.Info.Durability > 0)
             {
                 count++;
                 MirLabel TNRLabel = new MirLabel
@@ -6758,7 +6758,7 @@ public NewHeroDialog NewHeroDialog;
                     Math.Max(ItemLabel.Size.Height, TNRLabel.DisplayRectangle.Bottom));
             }
 
-            if (HoverItem.Info.Type == ItemType.变换 && HoverItem.Info.Durability > 0)
+            if (HoverItem.Info.Type == ItemType.Transform && HoverItem.Info.Durability > 0)
             {
                 count++;
                 MirLabel TNRLabel = new MirLabel
@@ -6845,7 +6845,7 @@ public NewHeroDialog NewHeroDialog;
                     Location = new Point(4, ItemLabel.DisplayRectangle.Bottom),
                     OutLine = true,
                     Parent = ItemLabel,
-                    Text = string.Format(realItem.Type != ItemType.护甲 ? "{0} + {1}~{2}" : "最大 {0} + {1}", HoverItem.Awake.type.ToString(), HoverItem.Awake.getAwakeValue(), HoverItem.Awake.getAwakeValue())
+                    Text = string.Format(realItem.Type != ItemType.Armour ? "{0} + {1}~{2}" : "最大 {0} + {1}", HoverItem.Awake.type.ToString(), HoverItem.Awake.getAwakeValue(), HoverItem.Awake.getAwakeValue())
                 };
 
                 ItemLabel.Size = new Size(Math.Max(ItemLabel.Size.Width, AWAKE_TOTAL_VALUELabel.DisplayRectangle.Right + 4),
@@ -6867,7 +6867,7 @@ public NewHeroDialog NewHeroDialog;
                         Location = new Point(4, ItemLabel.DisplayRectangle.Bottom),
                         OutLine = true,
                         Parent = ItemLabel,
-                        Text = string.Format(realItem.Type != ItemType.护甲 ? "等级 {0} : {1} + {2}~{3}" : "等级 {0} : 最大 {1} + {2}~{3}", i + 1, HoverItem.Awake.type.ToString(), HoverItem.Awake.getAwakeLevelValue(i), HoverItem.Awake.getAwakeLevelValue(i))
+                        Text = string.Format(realItem.Type != ItemType.Armour ? "等级 {0} : {1} + {2}~{3}" : "等级 {0} : 最大 {1} + {2}~{3}", i + 1, HoverItem.Awake.type.ToString(), HoverItem.Awake.getAwakeLevelValue(i), HoverItem.Awake.getAwakeLevelValue(i))
                     };
 
                     ItemLabel.Size = new Size(Math.Max(ItemLabel.Size.Width, AWAKE_LEVEL_VALUELabel.DisplayRectangle.Right + 4),
@@ -6974,7 +6974,7 @@ public NewHeroDialog NewHeroDialog;
             #endregion
 
             #region CLASS
-            if (realItem.RequiredClass != RequiredClass.无)
+            if (realItem.RequiredClass != RequiredClass.None)
             {
                 count++;
                 Color colour = Color.White;
@@ -6982,23 +6982,23 @@ public NewHeroDialog NewHeroDialog;
                 switch (MapObject.User.Class)
                 {
                     case MirClass.Warrior:
-                        if (!realItem.RequiredClass.HasFlag(RequiredClass.战士))
+                        if (!realItem.RequiredClass.HasFlag(RequiredClass.Warrior))
                             colour = Color.Red;
                         break;
                     case MirClass.Wizard:
-                        if (!realItem.RequiredClass.HasFlag(RequiredClass.法师))
+                        if (!realItem.RequiredClass.HasFlag(RequiredClass.Wizard))
                             colour = Color.Red;
                         break;
                     case MirClass.Taoist:
-                        if (!realItem.RequiredClass.HasFlag(RequiredClass.道士))
+                        if (!realItem.RequiredClass.HasFlag(RequiredClass.Taoist))
                             colour = Color.Red;
                         break;
                     case MirClass.Assassin:
-                        if (!realItem.RequiredClass.HasFlag(RequiredClass.刺客))
+                        if (!realItem.RequiredClass.HasFlag(RequiredClass.Assassin))
                             colour = Color.Red;
                         break;
                     case MirClass.Archer:
-                        if (!realItem.RequiredClass.HasFlag(RequiredClass.弓手))
+                        if (!realItem.RequiredClass.HasFlag(RequiredClass.Archer))
                             colour = Color.Red;
                         break;
                 }
@@ -7347,7 +7347,7 @@ public NewHeroDialog NewHeroDialog;
 
             #region Gems
 
-            if (HoverItem.Info.Type == ItemType.宝玉)
+            if (HoverItem.Info.Type == ItemType.Gem)
             {
                 #region UseOn text
                 count++;
@@ -7710,7 +7710,7 @@ public NewHeroDialog NewHeroDialog;
 
             #region GEM
 
-            if (realItem.Type == ItemType.宝玉)
+            if (realItem.Type == ItemType.Gem)
             {
                 string text = "";
 
@@ -7746,7 +7746,7 @@ public NewHeroDialog NewHeroDialog;
 
             #region SPLITUP
 
-            if (realItem.StackSize > 1 && realItem.Type != ItemType.宝玉)
+            if (realItem.StackSize > 1 && realItem.Type != ItemType.Gem)
             {
                 count++;
                 MirLabel SPLITUPLabel = new MirLabel
@@ -7804,7 +7804,7 @@ public NewHeroDialog NewHeroDialog;
 
             #region TOOLTIP
 
-            if (realItem.Type == ItemType.宠物 && realItem.Shape == 26)//Dynamic wonderDrug
+            if (realItem.Type == ItemType.Pets && realItem.Shape == 26)//Dynamic wonderDrug
             {
                 string strTime = Functions.PrintTimeSpanFromSeconds((HoverItem.CurrentDura * 3600), false);
                 switch ((int)realItem.Effect)
@@ -7833,7 +7833,7 @@ public NewHeroDialog NewHeroDialog;
                 }
             }
 
-            if (realItem.Type == ItemType.卷轴 && realItem.Shape == 7)//Credit Scroll
+            if (realItem.Type == ItemType.Scroll && realItem.Shape == 7)//Credit Scroll
             {
                 HoverItem.Info.ToolTip = string.Format("增加了 {0} 游戏点.", HoverItem.Info.Price);
             }
@@ -9598,7 +9598,7 @@ public NewHeroDialog NewHeroDialog;
 
             int cost = magic.Level * magic.LevelCost + magic.BaseCost;
 
-            if (magic.Spell == Spell.瞬息移动 || magic.Spell == Spell.Blink || magic.Spell == Spell.StormEscape)
+            if (magic.Spell == Spell.Teleport || magic.Spell == Spell.Blink || magic.Spell == Spell.StormEscape)
             {
                 for (int i = 0; i < GameScene.Scene.Buffs.Count; i++)
                 {
@@ -9625,20 +9625,20 @@ public NewHeroDialog NewHeroDialog;
             //Targeting
             switch (magic.Spell)
             {
-                case Spell.火球术:
-                case Spell.大火球:
-                case Spell.诱惑之光:
-                case Spell.施毒术:
-                case Spell.雷电术:
-                case Spell.灭天火:
-                case Spell.灵魂火符:
-                case Spell.圣言术:
-                case Spell.寒冰掌:
-                case Spell.噬血术:
-                case Spell.心灵启示:
-                case Spell.捕绳剑:
-                case Spell.迷魂术:
-                case Spell.烈火身:
+                case Spell.FireBall:
+                case Spell.GreatFireBall:
+                case Spell.ElectricShock:
+                case Spell.Poisoning:
+                case Spell.ThunderBolt:
+                case Spell.FlameDisruptor:
+                case Spell.SoulFireBall:
+                case Spell.TurnUndead:
+                case Spell.FrostCrunch:
+                case Spell.Vampirism:
+                case Spell.Revelation:
+                case Spell.Entrapment:
+                case Spell.Hallucination:
+                case Spell.DarkBody:
                     if (User.NextMagicObject != null)
                     {
                         if (!User.NextMagicObject.Dead && User.NextMagicObject.Race != ObjectType.Item && User.NextMagicObject.Race != ObjectType.Merchant)
@@ -9649,18 +9649,18 @@ public NewHeroDialog NewHeroDialog;
 
                     if (target != null && target.Race == ObjectType.Monster) MapObject.MagicObject = target;
                     break;
-                case Spell.天日闪:
-                case Spell.无我闪:
-                case Spell.万斤闪:
-                case Spell.爆闪:
+                case Spell.StraightShot:
+                case Spell.DoubleShot:
+                case Spell.ElementalShot:
+                case Spell.DelayedExplosion:
                 case Spell.BindingShot:
-                case Spell.吸血地闪:
-                case Spell.毒魔闪:
-                case Spell.邪爆闪:
-                case Spell.血龙闪:
-                case Spell.吸血地精:
-                case Spell.痹魔阱:
-                case Spell.蛇柱阱:
+                case Spell.VampireShot:
+                case Spell.PoisonShot:
+                case Spell.CrippleShot:
+                case Spell.NapalmShot:
+                case Spell.SummonVampire:
+                case Spell.SummonToad:
+                case Spell.SummonSnakes:
                     if (!User.HasClassWeapon)
                     {
                         GameScene.Scene.OutputMessage("必需装备弓来释放此技能.");
@@ -9692,11 +9692,11 @@ public NewHeroDialog NewHeroDialog;
                     //}
 
                     break;
-                case Spell.净化术:
-                case Spell.治愈术:
-                case Spell.无极真气:
-                case Spell.先天气功:
-                case Spell.血龙水:
+                case Spell.Purification:
+                case Spell.Healing:
+                case Spell.UltimateEnhancer:
+                case Spell.EnergyShield:
+                case Spell.PetEnhancer:
                     if (User.NextMagicObject != null)
                     {
                         if (!User.NextMagicObject.Dead && User.NextMagicObject.Race != ObjectType.Item && User.NextMagicObject.Race != ObjectType.Merchant)
@@ -9705,47 +9705,47 @@ public NewHeroDialog NewHeroDialog;
 
                     if (target == null) target = User;
                     break;
-                case Spell.爆裂火焰:
-                case Spell.集体隐身术:
-                case Spell.火墙:
-                case Spell.困魔咒:
+                case Spell.FireBang:
+                case Spell.MassHiding:
+                case Spell.FireWall:
+                case Spell.TrapHexagon:
                     if (User.NextMagicObject != null)
                     {
                         if (!User.NextMagicObject.Dead && User.NextMagicObject.Race != ObjectType.Item && User.NextMagicObject.Race != ObjectType.Merchant)
                             target = User.NextMagicObject;
                     }
                     break;
-                case Spell.毒雾:
+                case Spell.PoisonCloud:
                     if (User.NextMagicObject != null)
                     {
                         if (!User.NextMagicObject.Dead && User.NextMagicObject.Race != ObjectType.Item && User.NextMagicObject.Race != ObjectType.Merchant)
                             target = User.NextMagicObject;
                     }
                     break;
-                case Spell.天霜冰环:
-                case Spell.天上秘术:
+                case Spell.Blizzard:
+                case Spell.MeteorStrike:
                     if (User.NextMagicObject != null)
                     {
                         if (!User.NextMagicObject.Dead && User.NextMagicObject.Race != ObjectType.Item && User.NextMagicObject.Race != ObjectType.Merchant)
                             target = User.NextMagicObject;
                     }
                     break;
-                case Spell.苏生术:
+                case Spell.Reincarnation:
                     if (User.NextMagicObject != null)
                     {
                         if (User.NextMagicObject.Dead && User.NextMagicObject.Race == ObjectType.Player)
                             target = User.NextMagicObject;
                     }
                     break;
-                case Spell.捕缚术:
+                case Spell.Trap:
                     if (User.NextMagicObject != null)
                     {
                         if (!User.NextMagicObject.Dead && User.NextMagicObject.Race != ObjectType.Item && User.NextMagicObject.Race != ObjectType.Merchant)
                             target = User.NextMagicObject;
                     }
                     break;
-                case Spell.拔刀术:
-                    if (User.GetMagic(Spell.拔刀术).Level <= 1 && User.IsDashAttack() == false)
+                case Spell.FlashDash:
+                    if (User.GetMagic(Spell.FlashDash).Level <= 1 && User.IsDashAttack() == false)
                     {
                         User.ClearMagic();
                         return;
@@ -9761,7 +9761,7 @@ public NewHeroDialog NewHeroDialog;
 
             Point location = target != null ? target.CurrentLocation : User.NextMagicLocation;
 
-            if (magic.Spell == Spell.拔刀术)
+            if (magic.Spell == Spell.FlashDash)
                 dir = User.Direction;
 
             if ((magic.Range != 0) && (!Functions.InRange(User.CurrentLocation, location, magic.Range)))
