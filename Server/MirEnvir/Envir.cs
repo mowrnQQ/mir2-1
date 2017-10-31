@@ -3108,7 +3108,11 @@ namespace Server.MirEnvir
                         ctx.SaveChanges();
                     }
                 }
-                c.Account.Characters.Add(info);
+                else
+                {
+                    c.Account.Characters.Add(info);
+                }
+                
                 CharacterList.Add(info);
 
                 c.Enqueue(new ServerPackets.NewCharacterSuccess {CharInfo = info.ToSelectInfo()});
