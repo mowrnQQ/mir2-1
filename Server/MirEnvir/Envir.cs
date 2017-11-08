@@ -3085,11 +3085,22 @@ namespace Server.MirEnvir
         {
             UserItem item = new UserItem(info)
                 {
-                    UniqueID = ++NextUserItemID,
                     CurrentDura = info.Durability,
                     MaxDura = info.Durability
                 };
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.UserItems.Attach(item);
+                    ctx.Entry(item).State = EntityState.Added;
+                    ctx.SaveChanges();
+                }
+            }
+            else
+            {
+                item.UniqueID = ++NextUserItemID;
+            }
             UpdateItemExpiry(item);
 
             return item;
@@ -3104,10 +3115,22 @@ namespace Server.MirEnvir
 
             UserItem item = new UserItem(info)
                 {
-                    UniqueID = ++NextUserItemID,
                     MaxDura = info.Durability,
                     CurrentDura = (ushort) Math.Min(info.Durability, Random.Next(info.Durability) + 1000)
                 };
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.UserItems.Attach(item);
+                    ctx.Entry(item).State = EntityState.Added;
+                    ctx.SaveChanges();
+                }
+            }
+            else
+            {
+                item.UniqueID = ++NextUserItemID;
+            }
 
             UpgradeItem(item);
 
