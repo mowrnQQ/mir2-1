@@ -12,6 +12,7 @@ using System.Text.RegularExpressions;
 using C = ClientPackets;
 using S = ServerPackets;
 using System.Linq;
+using System.ComponentModel;
 
 public enum BlendMode : sbyte
 {
@@ -169,7 +170,8 @@ public enum IntelligentCreatureType : byte
     OlympicFlame = 8,
     BabySnowMan = 9,
     Frog = 10,
-    BabyMonkey = 11
+    BabyMonkey = 11,
+    AngryBird = 12
 }
 
 //1 blank mob files
@@ -321,7 +323,7 @@ public enum Monster : ushort
     BrownFrogSpider = 138,
     ArcherGuard = 139,
     KatanaGuard = 140,
-    //BLANK_141 = 141,
+    ArcherGuard2 = 141,
     Pig = 142,
     Bull = 143,
     Bush = 144,
@@ -358,7 +360,7 @@ public enum Monster : ushort
         SiegeRepairman = 175, //not added frames
     BlueSanta = 176,//done
     BattleStandard = 177,//done
-    ArcherGuard2 = 178,//done
+    //ArcherGuard2 = 178,//done
     RedYimoogi = 179,//done
     LionRiderMale = 180, //frames not added
     LionRiderFemale = 181, //frames not added
@@ -620,6 +622,7 @@ public enum Monster : ushort
     BabySnowMan = 10009,//unknown
     Frog = 10010,//unknown
     BabyMonkey = 10011,//unknown
+    AngryBird = 10012,
 }
 
 public enum MirAction : byte
@@ -727,7 +730,8 @@ public enum ObjectType : byte
     Spell = 4,
     Monster = 5,
     Deco = 6,
-    Creature = 7
+    Creature = 7,
+    Hero = 8
 }
 
 public enum ChatType : byte
@@ -747,7 +751,8 @@ public enum ChatType : byte
     Relationship = 12,
     Mentor = 13,
     Shout2 = 14,
-    Shout3 = 15
+    Shout3 = 15,
+    System4 = 16
 }
 
 public enum ItemType : byte
@@ -786,7 +791,7 @@ public enum ItemType : byte
     Reel = 32,
     Fish = 33,
     Quest = 34,
-	Awakening = 35,
+    Awakening = 35,
     Pets = 36,
     Transform = 37,
 }
@@ -810,6 +815,10 @@ public enum MirGridType : byte
     AwakenItem = 14,
     Mail = 15,
     Refine = 16,
+    Renting = 17,
+    GuestRenting = 18,
+	HeroInventory,
+    HeroEquipment
 }
 
 public enum EquipmentSlot : byte
@@ -868,6 +877,15 @@ public enum PetMode : byte
     None = 3,
 }
 
+[Obfuscation(Feature = "renaming", Exclude = true)]
+public enum HeroMode : byte
+{
+    Attack = 0,
+    Defend = 1,
+    Follow = 2,
+    Custom = 3,
+}
+
 [Flags]
 [Obfuscation(Feature = "renaming", Exclude = true)]
 public enum PoisonType : ushort
@@ -902,6 +920,8 @@ public enum BindMode : short
     BindOnEquip = 512,//0x0200
     NoSRepair = 1024,//0x0400
     NoWeddingRing = 2048,//0x0800
+    UnableToRent = 4096,
+    UnableToDisassemble = 8192
 }
 
 [Flags]
@@ -1208,7 +1228,12 @@ public enum BuffType : byte
     Defence,
     MagicDefence,
     WonderDrug,
-    Knapsack
+    Knapsack,
+    HeroWarrior,
+    HeroWizard,
+    HeroTaoist,
+    HeroAssassin,
+    HeroArcher
 }
 
 public enum DefenceType : byte
@@ -1450,6 +1475,22 @@ public enum ServerPacketIds : short
     GameShopStock,
     Rankings,
     Opendoor,
+
+    GetRentedItems,
+    ItemRentalRequest,
+    ItemRentalFee,
+    ItemRentalPeriod,
+    DepositRentalItem,
+    RetrieveRentalItem,
+    UpdateRentalItem,
+    CancelItemRental,
+    ItemRentalLock,
+    ItemRentalPartnerLock,
+    CanConfirmItemRental,
+    ConfirmItemRental,
+	NewHeroRequest,
+    CurrentHeroIndexChange,
+    HeroInformation
 }
 
 public enum ClientPacketIds : short
@@ -1582,6 +1623,26 @@ public enum ClientPacketIds : short
     ReportIssue,
     GetRanking,
     Opendoor,
+
+    GetRentedItems,
+    ItemRentalRequest,
+    ItemRentalFee,
+    ItemRentalPeriod,
+    DepositRentalItem,
+    RetrieveRentalItem,
+    CancelItemRental,
+    ItemRentalLockFee,
+    ItemRentalLockItem,
+    ConfirmItemRental,
+NewHero,
+    DeleteHero,
+    SelectHero,
+    ReviveHero,
+    SummonHero,
+    DismissHero,
+
+    ChangeHero,
+    ChangeHeroAttackMode
 }
 
 public enum ConquestType : byte
@@ -2629,6 +2690,7 @@ public class ItemInfo
     public byte CriticalDamage { get; set; }
     public bool NeedIdentify { get; set; }
     public bool ShowGroupPickup { get; set; }
+    public bool GlobalDropNotify { get; set; }
     public bool ClassBased { get; set; }
     public bool LevelBased { get; set; }
     public bool CanMine { get; set; }
@@ -2651,7 +2713,7 @@ public class ItemInfo
     [NotMapped]
     public bool IsConsumable
     {
-        get { return Type == ItemType.Potion || Type == ItemType.Scroll || Type == ItemType.Food || Type == ItemType.Transform || Type == ItemType.Script; }
+        get { return Type == ItemType.Potion || Type == ItemType.Scroll || Type == ItemType.Food || Type == ItemType.Transform; }
     }
     [NotMapped]
     public string FriendlyName
@@ -2742,6 +2804,10 @@ public class ItemInfo
             ClassBased = (bools & 0x04) == 0x04;
             LevelBased = (bools & 0x08) == 0x08;
             CanMine = (bools & 0x10) == 0x10;
+
+            if (version >= 77)
+                GlobalDropNotify = (bools & 0x20) == 0x20;
+
             MaxAcRate = reader.ReadByte();
             MaxMacRate = reader.ReadByte();
             Holy = reader.ReadByte();
@@ -2857,6 +2923,7 @@ public class ItemInfo
         if (ClassBased) bools |= 0x04;
         if (LevelBased) bools |= 0x08;
         if (CanMine) bools |= 0x10;
+        if (GlobalDropNotify) bools |= 0x20;
         writer.Write(bools);
         writer.Write(MaxAcRate);
         writer.Write(MaxMacRate);
@@ -3097,8 +3164,9 @@ public class UserItem
         set { MaxDura = (ushort) value; }
     }
     public uint Count { get; set; } = 1;
+    public long DBCount { get { return Count;} set { Count = (uint) value; } }
     public uint GemCount { get; set; } = 0;
-
+    public long DBGemCount { get { return GemCount;} set { GemCount = (uint) value; } }
     public byte AC { get; set; }
     public byte MAC { get; set; }
     public byte DC { get; set; }
@@ -3133,12 +3201,60 @@ public class UserItem
     public int WeddingRing { get; set; } = -1;
 
     public UserItem[] Slots = new UserItem[5];
+    private string dbSlots = "";
+
+    public string DBSlots
+    {
+        get
+        {
+            var currentSlots = string.Join(",", Slots.Select(i => i?.UniqueID.ToString() ?? "null"));
+            if (!String.Equals(dbSlots, currentSlots, StringComparison.CurrentCulture))
+            {
+                dbSlots = currentSlots;
+            }
+            return dbSlots;
+        }
+        set { dbSlots = value; }
+    }
+
 
     public DateTime? BuybackExpiryDate { get; set; } = SqlDateTime.MinValue.Value;
 
     public ExpireInfo ExpireInfo;
+    public RentalInformation RentalInformation;
 
 	public Awake Awake = new Awake();
+
+    public byte[] DBAwake
+    {
+        get
+        {
+            using (var stream = new MemoryStream())
+            {
+                using (var writer = new BinaryWriter(stream))
+                {
+                    Awake.Save(writer);
+                }
+                stream.Flush();
+                return stream.GetBuffer();
+            }
+        }
+        set
+        {
+            if (value == null)
+            {
+                Awake = new Awake();
+                return;
+            }
+            using (var stream = new MemoryStream(value))
+            {
+                using (var reader = new BinaryReader(stream))
+                {
+                    Awake = new Awake(reader);
+                }
+            }
+        }
+    }
     [NotMapped]
     public bool IsAdded
     {
@@ -3243,10 +3359,13 @@ public class UserItem
         if (version < 65) return;
 
         if (reader.ReadBoolean())
-        {
             ExpireInfo = new ExpireInfo(reader, version, Customversion);
-        }
 
+        if (version < 76)
+            return;
+
+        if (reader.ReadBoolean())
+            RentalInformation = new RentalInformation(reader, version, Customversion);
     }
 
     public void Save(BinaryWriter writer)
@@ -3308,12 +3427,11 @@ public class UserItem
         writer.Write(WeddingRing);
 
         writer.Write(ExpireInfo != null);
+        ExpireInfo?.Save(writer);
 
-        if (ExpireInfo != null)
-        {
-            ExpireInfo.Save(writer);
+        writer.Write(RentalInformation != null);
+        RentalInformation?.Save(writer);
         }
-    }
 
 
     public uint Price()
@@ -3345,9 +3463,10 @@ public class UserItem
     }
     public uint RepairPrice()
     {
-        if (Info == null || Info.Durability == 0) return 0;
+        if (Info == null || Info.Durability == 0)
+            return 0;
 
-        uint p = Info.Price;
+        var p = Info.Price;
 
         if (Info.Durability > 0)
         {
@@ -3356,7 +3475,12 @@ public class UserItem
 
         }
 
-        return (p * Count) - Price();
+        var cost = p * Count - Price();
+
+        if (RentalInformation == null)
+            return cost;
+
+        return cost * 2;
     }
 
     public uint Quality()
@@ -3513,10 +3637,16 @@ public class UserItem
             RefinedValue = RefinedValue,
             RefineAdded = RefineAdded,
 
-            ExpireInfo = ExpireInfo
+            ExpireInfo = ExpireInfo,
+            RentalInformation = RentalInformation
             };
 
         return item;
+    }
+
+    public void LoadSlots(string slots)
+    {
+        //only for server so extend this method in server.
     }
 
 }
@@ -3538,6 +3668,33 @@ public class ExpireInfo
     public void Save(BinaryWriter writer)
     {
         writer.Write(ExpiryDate.GetValueOrDefault().ToBinary());
+    }
+}
+
+public class RentalInformation
+{
+    public string OwnerName;
+    public BindMode BindingFlags = BindMode.none;
+    public DateTime ExpiryDate;
+    public bool RentalLocked;
+
+    public RentalInformation()
+    { }
+
+    public RentalInformation(BinaryReader reader, int version = int.MaxValue, int CustomVersion = int.MaxValue)
+    {
+        OwnerName = reader.ReadString();
+        BindingFlags = (BindMode)reader.ReadInt16();
+        ExpiryDate = DateTime.FromBinary(reader.ReadInt64());
+        RentalLocked = reader.ReadBoolean();
+    }
+
+    public void Save(BinaryWriter writer)
+    {
+        writer.Write(OwnerName);
+        writer.Write((short)BindingFlags);
+        writer.Write(ExpiryDate.ToBinary());
+        writer.Write(RentalLocked);
     }
 }
 
@@ -3686,9 +3843,14 @@ public class Awake
 
     public bool CheckAwakening(UserItem item, AwakeType type)
     {
-        if (item.Info.CanAwakening != true) return false;
+        if (item.Info.Bind.HasFlag(BindMode.DontUpgrade))
+            return false;
 
         if (item.Info.Grade == ItemGrade.None) return false;
+		if (item.Info.CanAwakening != true)
+            return false;
+        if (item.Info.Grade == ItemGrade.None)
+            return false;
 
         if (IsMaxLevel()) return false;
 
@@ -3853,7 +4015,7 @@ public class ClientMagic
     public byte Level, Key, Range;
     public ushort Experience;
 
-    public bool IsTempSpell;
+    public bool IsTempSpell, IsHeroMagic;
     public long CastTime, Delay;
 
     public ClientMagic()
@@ -3882,6 +4044,7 @@ public class ClientMagic
 
         Range = reader.ReadByte();
         CastTime = reader.ReadInt64();
+        IsHeroMagic = reader.ReadBoolean();
     }
 
     public void Save(BinaryWriter writer)
@@ -3906,6 +4069,30 @@ public class ClientMagic
 
         writer.Write(Range);
         writer.Write(CastTime);
+        writer.Write(IsHeroMagic);
+    }
+
+    public static string GetSpellName(Spell spell)
+    {
+        Type type = spell.GetType();
+        var memberInfo = type.GetMember(spell.ToString());
+        if (memberInfo != null && memberInfo.Length > 0)
+        {
+            object[] attrs = memberInfo[0].GetCustomAttributes(typeof(DescriptionAttribute), false);
+
+            if (attrs != null && attrs.Length > 0)
+            {
+                return ((DescriptionAttribute)attrs[0]).Description;
+            }
+            else
+            {
+                return spell.ToString();
+            }
+        }
+        else
+        {
+            return spell.ToString();
+        }
     }
    
 }
@@ -4509,7 +4696,7 @@ public abstract class Packet
             try
             {
                 short id = reader.ReadInt16();
-                Debug.WriteLine(id);
+                
                 p = IsServer ? GetClientPacket(id) : GetServerPacket(id);
                 if (p == null) return null;
 
@@ -4805,6 +4992,30 @@ public abstract class Packet
                 return new C.GetRanking();
             case (short)ClientPacketIds.Opendoor:
                 return new C.Opendoor();
+            case (short)ClientPacketIds.GetRentedItems:
+                return new C.GetRentedItems();
+            case (short)ClientPacketIds.ItemRentalRequest:
+                return new C.ItemRentalRequest();
+            case (short)ClientPacketIds.ItemRentalFee:
+                return new C.ItemRentalFee();
+            case (short)ClientPacketIds.ItemRentalPeriod:
+                return new C.ItemRentalPeriod();
+            case (short)ClientPacketIds.DepositRentalItem:
+                return new C.DepositRentalItem();
+            case (short)ClientPacketIds.RetrieveRentalItem:
+                return new C.RetrieveRentalItem();
+            case (short)ClientPacketIds.CancelItemRental:
+                return new C.CancelItemRental();
+            case (short)ClientPacketIds.ItemRentalLockFee:
+                return new C.ItemRentalLockFee();
+            case (short)ClientPacketIds.ItemRentalLockItem:
+                return new C.ItemRentalLockItem();
+            case (short)ClientPacketIds.ConfirmItemRental:
+                return new C.ConfirmItemRental();
+			case (short)ClientPacketIds.NewHero:
+                return new C.NewHero();
+            case (short)ClientPacketIds.SummonHero:
+                return new C.SummonHero();
             default:
                 return null;
         }
@@ -4812,6 +5023,7 @@ public abstract class Packet
     }
     public static Packet GetServerPacket(short index)
     {
+        //Debug.WriteLine((ServerPacketIds)index);
         switch (index)
         {
             case (short)ServerPacketIds.Connected:
@@ -5258,6 +5470,36 @@ public abstract class Packet
                 return new S.Rankings();
             case (short)ServerPacketIds.Opendoor:
                 return new S.Opendoor();
+            case (short)ServerPacketIds.GetRentedItems:
+                return new S.GetRentedItems();
+            case (short)ServerPacketIds.ItemRentalRequest:
+                return new S.ItemRentalRequest();
+            case (short)ServerPacketIds.ItemRentalFee:
+                return new S.ItemRentalFee();
+            case (short)ServerPacketIds.ItemRentalPeriod:
+                return new S.ItemRentalPeriod();
+            case (short)ServerPacketIds.DepositRentalItem:
+                return new S.DepositRentalItem();
+            case (short)ServerPacketIds.RetrieveRentalItem:
+                return new S.RetrieveRentalItem();
+            case (short)ServerPacketIds.UpdateRentalItem:
+                return new S.UpdateRentalItem();
+            case (short)ServerPacketIds.CancelItemRental:
+                return new S.CancelItemRental();
+            case (short)ServerPacketIds.ItemRentalLock:
+                return new S.ItemRentalLock();
+            case (short)ServerPacketIds.ItemRentalPartnerLock:
+                return new S.ItemRentalPartnerLock();
+            case (short)ServerPacketIds.CanConfirmItemRental:
+                return new S.CanConfirmItemRental();
+            case (short)ServerPacketIds.ConfirmItemRental:
+                return new S.ConfirmItemRental();
+			case (short)ServerPacketIds.NewHeroRequest:
+                return new S.NewHeroRequest();
+            case (short)ServerPacketIds.CurrentHeroIndexChange:
+                return new S.CurrentHeroIndexChange();
+            case (short)ServerPacketIds.HeroInformation:
+                return new S.HeroInformation();
             default:
                 return null;
         }
@@ -6313,6 +6555,8 @@ public class GuildBuffInfo
 public class GuildBuff
 {
 //    [ForeignKey("Info")]
+    [Key]
+    public int Index { get; set; }
     public int Id { get; set; }
     public GuildBuffInfo Info;
     public bool Active { get; set; } = false;
@@ -6427,4 +6671,80 @@ public class Door
     public byte ImageIndex;
     public long LastTick;
     public Point Location;
+}
+
+public class ItemRentalInformation
+{
+    public long ItemId;
+    public string ItemName;
+    public string RentingPlayerName;
+    public DateTime ItemReturnDate;
+
+    public ItemRentalInformation()
+    { }
+
+    public ItemRentalInformation(BinaryReader reader)
+    {
+        ItemId = reader.ReadInt64();
+        ItemName = reader.ReadString();
+        RentingPlayerName = reader.ReadString();
+        ItemReturnDate = DateTime.FromBinary(reader.ReadInt64());
+    }
+
+    public void Save(BinaryWriter writer)
+    {
+        writer.Write(ItemId);
+        writer.Write(ItemName);
+        writer.Write(RentingPlayerName);
+        writer.Write(ItemReturnDate.ToBinary());
+    }
+}
+public class ClientHeroInfo
+{
+    public long UniqueID;
+    public string Name;
+    public ushort Level;
+    public MirClass Class;
+    public MirGender Gender;
+    public bool Summoned;
+    public bool Sealed;
+    public bool Dead;
+    public bool Active;
+    public uint ObjectID;
+    public ushort InventoryLevel;
+
+    public ClientHeroInfo()
+    {
+    }
+
+    public ClientHeroInfo(BinaryReader reader)
+    {
+        UniqueID = reader.ReadInt64();
+        Name = reader.ReadString();
+        Level = reader.ReadUInt16();
+        Class = (MirClass)reader.ReadByte();
+        Gender = (MirGender)reader.ReadByte();
+        Summoned = reader.ReadBoolean();
+        Sealed = reader.ReadBoolean();
+        Dead = reader.ReadBoolean();
+        Active = reader.ReadBoolean();
+        ObjectID = reader.ReadUInt32();
+        InventoryLevel = reader.ReadUInt16();
+    }
+
+    public void Save(BinaryWriter writer)
+    {
+        writer.Write(UniqueID);
+        writer.Write(Name);
+        writer.Write(Level);
+        writer.Write((byte)Class);
+        writer.Write((byte)Gender);
+        writer.Write(Summoned);
+        writer.Write(Sealed);
+        writer.Write(Dead);
+        writer.Write(Active);
+        writer.Write(ObjectID);
+        writer.Write(InventoryLevel);
+    }
+
 }

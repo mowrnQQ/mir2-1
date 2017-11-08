@@ -42,6 +42,8 @@ namespace Server.MirDatabase
         public List<CharacterInfo> Characters { get; set; } = new List<CharacterInfo>();
 
         public UserItem[] Storage = new UserItem[80];
+        public bool HasExpandedStorage { get; set; }
+        public DateTime ExpandedStorageExpiryDate { get; set; }
         public uint Gold;
         public long DBGold { get { return Gold;} set { Gold = (uint) value; } }
         public uint Credit;
@@ -51,7 +53,7 @@ namespace Server.MirDatabase
         public MirConnection Connection;
         
         public LinkedList<AuctionInfo> Auctions = new LinkedList<AuctionInfo>();
-        public bool AdminAccount;
+        public bool AdminAccount { get; set; } = false;
 
         public AccountInfo()
         {
@@ -97,10 +99,14 @@ namespace Server.MirDatabase
             for (int i = 0; i < count; i++)
             {
                 Characters.Add(new CharacterInfo(reader) { AccountInfo = this });
-                
             }
 
-
+            if (Envir.LoadVersion > 75)
+            {
+                HasExpandedStorage = reader.ReadBoolean();
+                ExpandedStorageExpiryDate = DateTime.FromBinary(reader.ReadInt64());
+            }
+            
             Gold = reader.ReadUInt32();
             if (Envir.LoadVersion >= 63) Credit = reader.ReadUInt32();
 
@@ -219,6 +225,8 @@ namespace Server.MirDatabase
             for (int i = 0; i < Characters.Count; i++)
                 Characters[i].Save(writer);
 
+            writer.Write(HasExpandedStorage);
+            writer.Write(ExpandedStorageExpiryDate.ToBinary());
             writer.Write(Gold);
             writer.Write(Credit);
             writer.Write(Storage.Length);
@@ -279,10 +287,23 @@ namespace Server.MirDatabase
             return list;
         }
 
-        public int ResizeStorage()
+        public int ExpandStorage()
         {
             if (Storage.Length == 80)
+            {
                 Array.Resize(ref Storage, Storage.Length + 80);
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        for (int i = 0; i < 80; i++)
+                        {
+                            ctx.StorageItems.Add(new StorageItem() {AccountIndex = Index, UserItemUniqueID = null});
+                        }
+                        ctx.SaveChanges();
+                    }
+                }
+            }
 
             return Storage.Length;
         }

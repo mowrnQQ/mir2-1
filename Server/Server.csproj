@@ -27,6 +27,14 @@
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
+    <AssemblyVersion>2017.6.25.1919</AssemblyVersion>
+    <UpdateAssemblyVersion>True</UpdateAssemblyVersion>
+    <UpdateAssemblyFileVersion>True</UpdateAssemblyFileVersion>
+    <UpdateAssemblyInfoVersion>True</UpdateAssemblyInfoVersion>
+    <AssemblyInfoVersionSettings>YearStamp.MonthStamp.DayStamp.TimeStamp</AssemblyInfoVersionSettings>
+    <AssemblyVersionSettings>YearStamp.MonthStamp.DayStamp.TimeStamp</AssemblyVersionSettings>
+    <AssemblyFileVersionSettings>YearStamp.MonthStamp.DayStamp.TimeStamp</AssemblyFileVersionSettings>
+    <PrimaryVersionType>AssemblyVersionAttribute</PrimaryVersionType>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -75,6 +83,8 @@
       <Private>True</Private>
       <EmbedInteropTypes>False</EmbedInteropTypes>
     </Reference>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Core" />
@@ -87,6 +97,7 @@
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
+    <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\ClientPackets.cs">
@@ -98,6 +109,7 @@
     <Compile Include="..\ServerPackets.cs">
       <Link>MirNetwork\ServerPackets.cs</Link>
     </Compile>
+    <Compile Include="Extensions.cs" />
     <Compile Include="Migrations\201609120849364_AddMissingAttrs.cs" />
     <Compile Include="Migrations\201609120849364_AddMissingAttrs.Designer.cs">
       <DependentUpon>201609120849364_AddMissingAttrs.cs</DependentUpon>
@@ -146,8 +158,53 @@
     <Compile Include="Migrations\201610180718115_AddMissingAttrs5.Designer.cs">
       <DependentUpon>201610180718115_AddMissingAttrs5.cs</DependentUpon>
     </Compile>
+    <Compile Include="Migrations\201612270245407_AddMissingAttrs6.cs" />
+    <Compile Include="Migrations\201612270245407_AddMissingAttrs6.Designer.cs">
+      <DependentUpon>201612270245407_AddMissingAttrs6.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\201612290508068_AddMissingAttrs7.cs" />
+    <Compile Include="Migrations\201612290508068_AddMissingAttrs7.Designer.cs">
+      <DependentUpon>201612290508068_AddMissingAttrs7.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\201701110944066_AddMissingAttrs8.cs" />
+    <Compile Include="Migrations\201701110944066_AddMissingAttrs8.Designer.cs">
+      <DependentUpon>201701110944066_AddMissingAttrs8.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\201701200345407_AddMissingAttrs9.cs" />
+    <Compile Include="Migrations\201701200345407_AddMissingAttrs9.Designer.cs">
+      <DependentUpon>201701200345407_AddMissingAttrs9.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\201702060557163_DestoryQuestProgressTable.cs" />
+    <Compile Include="Migrations\201702060557163_DestoryQuestProgressTable.Designer.cs">
+      <DependentUpon>201702060557163_DestoryQuestProgressTable.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\201702060559014_RecreateQuestProgressTable.cs" />
+    <Compile Include="Migrations\201702060559014_RecreateQuestProgressTable.Designer.cs">
+      <DependentUpon>201702060559014_RecreateQuestProgressTable.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\201702060726304_AddMissingAttrs10.cs" />
+    <Compile Include="Migrations\201702060726304_AddMissingAttrs10.Designer.cs">
+      <DependentUpon>201702060726304_AddMissingAttrs10.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\201702080825500_DestoryGuildBuffTable.cs" />
+    <Compile Include="Migrations\201702080825500_DestoryGuildBuffTable.Designer.cs">
+      <DependentUpon>201702080825500_DestoryGuildBuffTable.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\201702080831162_RecreateGuildBuffTable.cs" />
+    <Compile Include="Migrations\201702080831162_RecreateGuildBuffTable.Designer.cs">
+      <DependentUpon>201702080831162_RecreateGuildBuffTable.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\201704270735412_AddHero.cs" />
+    <Compile Include="Migrations\201704270735412_AddHero.Designer.cs">
+      <DependentUpon>201704270735412_AddHero.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\201705090654132_AddHeroAttr.cs" />
+    <Compile Include="Migrations\201705090654132_AddHeroAttr.Designer.cs">
+      <DependentUpon>201705090654132_AddHeroAttr.cs</DependentUpon>
+    </Compile>
     <Compile Include="Migrations\Configuration.cs" />
     <Compile Include="MirDatabase\DataContext.cs" />
+    <Compile Include="MirDatabase\HeroInfo.cs" />
     <Compile Include="MirDatabase\MailInfo.cs" />
     <Compile Include="MirDatabase\ConquestInfo.cs" />
     <Compile Include="MirEnvir\Reporting.cs" />
@@ -304,6 +361,7 @@
     <Compile Include="MirObjects\DecoObject.cs" />
     <Compile Include="MirObjects\DelayedAction.cs" />
     <Compile Include="MirObjects\GuildObject.cs" />
+    <Compile Include="MirObjects\HeroObject.cs" />
     <Compile Include="MirObjects\IntelligentCreatureObject.cs" />
     <Compile Include="MirObjects\ItemObject.cs" />
     <Compile Include="MirObjects\MapObject.cs" />
@@ -482,6 +540,39 @@
     <EmbeddedResource Include="Migrations\201610180718115_AddMissingAttrs5.resx">
       <DependentUpon>201610180718115_AddMissingAttrs5.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\201612270245407_AddMissingAttrs6.resx">
+      <DependentUpon>201612270245407_AddMissingAttrs6.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\201612290508068_AddMissingAttrs7.resx">
+      <DependentUpon>201612290508068_AddMissingAttrs7.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\201701110944066_AddMissingAttrs8.resx">
+      <DependentUpon>201701110944066_AddMissingAttrs8.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\201701200345407_AddMissingAttrs9.resx">
+      <DependentUpon>201701200345407_AddMissingAttrs9.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\201702060557163_DestoryQuestProgressTable.resx">
+      <DependentUpon>201702060557163_DestoryQuestProgressTable.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\201702060559014_RecreateQuestProgressTable.resx">
+      <DependentUpon>201702060559014_RecreateQuestProgressTable.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\201702060726304_AddMissingAttrs10.resx">
+      <DependentUpon>201702060726304_AddMissingAttrs10.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\201702080825500_DestoryGuildBuffTable.resx">
+      <DependentUpon>201702080825500_DestoryGuildBuffTable.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\201702080831162_RecreateGuildBuffTable.resx">
+      <DependentUpon>201702080831162_RecreateGuildBuffTable.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\201704270735412_AddHero.resx">
+      <DependentUpon>201704270735412_AddHero.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\201705090654132_AddHeroAttr.resx">
+      <DependentUpon>201705090654132_AddHeroAttr.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="MirForms\Account\AccountInfoForm.resx">
       <DependentUpon>AccountInfoForm.cs</DependentUpon>
     </EmbeddedResource>
@@ -593,7 +684,6 @@
       <Install>true</Install>
     </BootstrapperPackage>
   </ItemGroup>
-  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

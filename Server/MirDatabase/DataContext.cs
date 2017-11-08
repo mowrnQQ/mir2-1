@@ -45,7 +45,7 @@ namespace Server.MirDatabase
         public DbSet<ConquestGateInfo> ConquestGateInfos { get; set; }
         public DbSet<ConquestWallInfo> ConquestWallInfos { get; set; }
         public DbSet<ConquestSiegeInfo> ConquestSiegeInfos { get; set; }
-
+        public DbSet<ConquestFlagInfo> ConquestFlagInfos { get; set; }
         public DbSet<AuctionInfo> AuctionInfos { get; set; }
         public DbSet<RespawnSave> RespawnSaves { get; set; }
         public DbSet<BaseGuildObject> Guilds { get; set; }
@@ -53,6 +53,12 @@ namespace Server.MirDatabase
         public DbSet<GuildMember> GuildMembers { get; set; }
         public DbSet<GuildBuff> GuildBuffs { get; set; }
         public DbSet<GuildStorageItem> GuildStorageItems { get; set; }
+
+        public DbSet<HeroInfo> HeroInfos { get; set; }
+        public DbSet<HeroMagic> HeroMagics { get; set; }
+        public DbSet<HeroInventoryItem> HeroInventoryItems { get; set; }
+        public DbSet<HeroEquipmentItem> HeroEquipmentItems { get; set; }
+        public DbSet<HeroBuff> HeroBuffs { get; set; }
 
         public DataContext() : base("Mir")
         {

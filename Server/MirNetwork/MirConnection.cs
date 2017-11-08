@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Data.Entity;
 using System.Net.Sockets;
 using Server.MirDatabase;
 using Server.MirEnvir;
@@ -63,13 +64,13 @@ namespace Server.MirNetwork
 
                     if (connCount >= Settings.MaxIP)
                     {
-                        SMain.EnqueueDebugging(IPAddress + ", Maximum connections reached.");
+                        SMain.EnqueueDebugging(IPAddress + ", 已达到最大连接数.");
                         conn.SendDisconnect(5);
                     }
                 }
             }
 
-            SMain.Enqueue(IPAddress + ", Connected.");
+            SMain.Enqueue(IPAddress + ", 已连接.");
 
             _client = client;
             _client.NoDelay = true;
@@ -578,8 +579,45 @@ namespace Server.MirNetwork
                 case (short)ClientPacketIds.Opendoor:
                     Opendoor((C.Opendoor)p);
                     break;
+                case (short)ClientPacketIds.GetRentedItems:
+                    GetRentedItems();
+                    break;
+                case (short)ClientPacketIds.ItemRentalRequest:
+                    ItemRentalRequest();
+                    break;
+                case (short)ClientPacketIds.ItemRentalFee:
+                    ItemRentalFee((C.ItemRentalFee)p);
+                    break;
+                case (short)ClientPacketIds.ItemRentalPeriod:
+                    ItemRentalPeriod((C.ItemRentalPeriod)p);
+                    break;
+                case (short)ClientPacketIds.DepositRentalItem:
+                    DepositRentalItem((C.DepositRentalItem)p);
+                    break;
+                case (short)ClientPacketIds.RetrieveRentalItem:
+                    RetrieveRentalItem((C.RetrieveRentalItem)p);
+                    break;
+                case (short)ClientPacketIds.CancelItemRental:
+                    CancelItemRental();
+                    break;
+                case (short)ClientPacketIds.ItemRentalLockFee:
+                    ItemRentalLockFee();
+                    break;
+                case (short)ClientPacketIds.ItemRentalLockItem:
+                    ItemRentalLockItem();
+                    break;
+                case (short)ClientPacketIds.ConfirmItemRental:
+                    ConfirmItemRental();
+                    break;
+				case (short)ClientPacketIds.NewHero:
+                    var packet = (C.NewHero) p;
+                    Player.NewHero(packet.Name, packet.Gender, packet.Class);
+                    break;
+                case (short)ClientPacketIds.SummonHero:
+                    Player.SummonHero();
+                    break;
                 default:
-                    SMain.Enqueue(string.Format("Invalid packet received. Index : {0}", p.Index));
+                    SMain.Enqueue(string.Format("收到无效数据包. Index : {0}", p.Index));
                     break;
             }
         }
@@ -665,11 +703,11 @@ namespace Server.MirNetwork
 
                     BeginSend(data);
                     SoftDisconnect(10);
-                    SMain.Enqueue(SessionID + ", Disconnnected - Wrong Client Version.");
+                    SMain.Enqueue(SessionID + ", 断开 - 不正确的客户端版本.");
                     return;
                 }
 
-            SMain.Enqueue(SessionID + ", " + IPAddress + ", Client version matched.");
+            SMain.Enqueue(SessionID + ", " + IPAddress + ", 客户端版本正确.");
             Enqueue(new S.ClientVersion { Result = 1 });
 
             Stage = GameStage.Login;
@@ -685,21 +723,21 @@ namespace Server.MirNetwork
         {
             if (Stage != GameStage.Login) return;
 
-            SMain.Enqueue(SessionID + ", " + IPAddress + ", New account being created.");
+            SMain.Enqueue(SessionID + ", " + IPAddress + ", 正在创建新账号.");
             SMain.Envir.NewAccount(p, this);
         }
         private void ChangePassword(C.ChangePassword p)
         {
             if (Stage != GameStage.Login) return;
 
-            SMain.Enqueue(SessionID + ", " + IPAddress + ", Password being changed.");
+            SMain.Enqueue(SessionID + ", " + IPAddress + ", 正在修改密码.");
             SMain.Envir.ChangePassword(p, this);
         }
         private void Login(C.Login p)
         {
             if (Stage != GameStage.Login) return;
 
-            SMain.Enqueue(SessionID + ", " + IPAddress + ", User logging in.");
+            SMain.Enqueue(SessionID + ", " + IPAddress + ", 正在登录.");
             SMain.Envir.Login(p, this);
         }
         private void NewCharacter(C.NewCharacter p)
@@ -738,6 +776,15 @@ namespace Server.MirNetwork
             temp.Deleted = true;
             temp.DeleteDate = SMain.Envir.Now;
             SMain.Envir.RemoveRank(temp);
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(temp);
+                    ctx.Entry(temp).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             Enqueue(new S.DeleteCharacterSuccess { CharacterIndex = temp.Index });
         }
         private void StartGame(C.StartGame p)
@@ -998,7 +1045,15 @@ namespace Server.MirNetwork
             if (Stage != GameStage.Game) return;
 
             Player.AMode = p.Mode;
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(Player.Info);
+                    ctx.Entry(Player.Info).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             Enqueue(new S.ChangeAMode {Mode = Player.AMode});
         }
         private void ChangePMode(C.ChangePMode p)
@@ -1008,7 +1063,15 @@ namespace Server.MirNetwork
                 return;
 
             Player.PMode = p.Mode;
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(Player.Info);
+                    ctx.Entry(Player.Info).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             Enqueue(new S.ChangePMode { Mode = Player.PMode });
         }
         private void ChangeTrade(C.ChangeTrade p)
@@ -1016,6 +1079,15 @@ namespace Server.MirNetwork
             if (Stage != GameStage.Game) return;
 
             Player.AllowTrade = p.AllowTrade;
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(Player.Info);
+                    ctx.Entry(Player.Info).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
         }
         private void Attack(C.Attack p)
         {
@@ -1116,6 +1188,15 @@ namespace Server.MirNetwork
                 }
 
                 magic.Key = p.Key;
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        ctx.UserMagics.Attach(magic);
+                        ctx.Entry(magic).State = EntityState.Modified;
+                        ctx.SaveChanges();
+                    }
+                }
             }
         }
         private void Magic(C.Magic p)
@@ -1280,17 +1361,17 @@ namespace Server.MirNetwork
             {
                 Player.AllowMarriage = !Player.AllowMarriage;
                 if (Player.AllowMarriage)
-                    Player.ReceiveChat("You're now allowing marriage requests.", ChatType.Hint);
+                    Player.ReceiveChat("你现在允许被求婚.", ChatType.Hint);
                 else
-                    Player.ReceiveChat("You're now blocking marriage requests.", ChatType.Hint);
+                    Player.ReceiveChat("你现在不允许被求婚.", ChatType.Hint);
             }
             else
             {
                 Player.AllowLoverRecall = !Player.AllowLoverRecall;
                 if (Player.AllowLoverRecall)
-                    Player.ReceiveChat("You're now allowing recall from lover.", ChatType.Hint);
+                    Player.ReceiveChat("你现在允许被爱人召唤.", ChatType.Hint);
                 else
-                    Player.ReceiveChat("You're now blocking recall from lover.", ChatType.Hint);
+                    Player.ReceiveChat("你现在不允许被爱人召唤.", ChatType.Hint);
             }
         }
 
@@ -1567,13 +1648,22 @@ namespace Server.MirNetwork
                 //Update the creature info
                 for (int i = 0; i < Player.Info.IntelligentCreatures.Count; i++)
                 {
-                    if (Player.Info.IntelligentCreatures[i].PetType == petUpdate.PetType)
+                    if (Player.SummonedCreatureType != petUpdate.PetType && Player.Info.IntelligentCreatures[i].PetType == petUpdate.PetType)
                     {
                         if (petUpdate.CustomName.Length <= 12)
                             Player.Info.IntelligentCreatures[i].CustomName = petUpdate.CustomName;
                         Player.Info.IntelligentCreatures[i].SlotIndex = petUpdate.SlotIndex;
                         Player.Info.IntelligentCreatures[i].Filter = petUpdate.Filter;
                         Player.Info.IntelligentCreatures[i].petMode = petUpdate.petMode;
+                        if (Settings.UseSQLServer)
+                        {
+                            using (var ctx = new DataContext())
+                            {
+                                ctx.UserIntelligentCreatures.Attach(Player.Info.IntelligentCreatures[i]);
+                                ctx.Entry(Player.Info.IntelligentCreatures[i]).State = EntityState.Modified;
+                                ctx.SaveChanges();
+                            }
+                        }
                     }
                     else continue;
                 }
@@ -1660,6 +1750,86 @@ namespace Server.MirNetwork
         {
             if (Stage != GameStage.Game) return;
             Player.Opendoor(p.DoorIndex);
+        }
+
+        private void GetRentedItems()
+        {
+            if (Stage != GameStage.Game)
+                return;
+
+            Player.GetRentedItems();
+    }
+
+        private void ItemRentalRequest()
+        {
+            if (Stage != GameStage.Game)
+                return;
+
+            Player.ItemRentalRequest();
+        }
+
+        private void ItemRentalFee(C.ItemRentalFee p)
+        {
+            if (Stage != GameStage.Game)
+                return;
+
+            Player.SetItemRentalFee(p.Amount);
+        }
+
+        private void ItemRentalPeriod(C.ItemRentalPeriod p)
+        {
+            if (Stage != GameStage.Game)
+                return;
+
+            Player.SetItemRentalPeriodLength(p.Days);
+        }
+
+        private void DepositRentalItem(C.DepositRentalItem p)
+        {
+            if (Stage != GameStage.Game)
+                return;
+
+            Player.DepositRentalItem(p.From, p.To);
+        }
+
+        private void RetrieveRentalItem(C.RetrieveRentalItem p)
+        {
+            if (Stage != GameStage.Game)
+                return;
+
+            Player.RetrieveRentalItem(p.From, p.To);
+        }
+
+        private void CancelItemRental()
+        {
+            if (Stage != GameStage.Game)
+                return;
+
+            Player.CancelItemRental();
+        }
+
+        private void ItemRentalLockFee()
+        {
+            if (Stage != GameStage.Game)
+                return;
+
+            Player.ItemRentalLockFee();
+        }
+
+        private void ItemRentalLockItem()
+        {
+            if (Stage != GameStage.Game)
+                return;
+
+            Player.ItemRentalLockItem();
+        }
+
+        private void ConfirmItemRental()
+        {
+            if (Stage != GameStage.Game)
+                return;
+
+            Player.ConfirmItemRental();
         }
     }
 }

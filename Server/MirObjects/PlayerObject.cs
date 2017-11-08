@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Data.Entity;
 using System.Drawing;
 using System.Linq;
 using ClientPackets;
@@ -9,6 +10,7 @@ using Server.MirEnvir;
 using Server.MirNetwork;
 using S = ServerPackets;
 using System.Text.RegularExpressions;
+using System.Windows.Forms;
 using Server.MirObjects.Monsters;
 
 namespace Server.MirObjects
@@ -22,7 +24,7 @@ namespace Server.MirObjects
 
         public long LastRecallTime, LastRevivalTime, LastTeleportTime, LastProbeTime, MenteeEXP;
 
-        public short Looks_Armour = 0, Looks_Weapon = -1;
+		public short Looks_Armour = 0, Looks_Weapon = -1, Looks_WeaponEffect = 0;
         public byte Looks_Wings = 0;
 
         public bool WarZone = false;
@@ -315,6 +317,13 @@ namespace Server.MirObjects
         public bool TradeLocked = false;
         public uint TradeGoldAmount = 0;
 
+        public PlayerObject ItemRentalPartner = null;
+        public UserItem ItemRentalDepositedItem = null;
+        public uint ItemRentalFeeAmount = 0;
+        public uint ItemRentalPeriodLength = 0;
+        public bool ItemRentalFeeLocked = false;
+        public bool ItemRentalItemLocked = false;
+
         private long LastRankUpdate = Envir.Time;
 
         public List<QuestProgressInfo> CurrentQuests
@@ -327,7 +336,11 @@ namespace Server.MirObjects
             get { return Info.CompletedQuests; }
         }
 
+        public long HeroSummonTime { get; set; }
+
         public byte AttackBonus, MineRate, GemRate, FishRate, CraftRate, SkillNeckBoost;
+
+        public HeroObject Hero;
 
         public PlayerObject(CharacterInfo info, MirConnection connection)
         {
@@ -458,10 +471,29 @@ namespace Server.MirObjects
                 if (!buff.Paused) buff.ExpireTime -= Envir.Time;
 
                 Info.Buffs.Add(buff);
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        
+                    }
+                }
             }
             Buffs.Clear();
 
+            for (int i = 0; i < PoisonList.Count; i++)
+            {
+                Poison poison = PoisonList[i];
+                poison.Owner = null;
+                poison.TickTime -= Envir.Time;
+
+                Info.Poisons.Add(poison);
+            }
+
+            PoisonList.Clear();
+
             TradeCancel();
+            CancelItemRental();
             RefineCancel();
             LogoutRelationship();
             LogoutMentor();
@@ -474,7 +506,15 @@ namespace Server.MirObjects
 
             Info.LastIP = Connection.IPAddress;
             Info.LastDate = Envir.Now;
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(Info);
+                    ctx.Entry(Info).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             Report.Disconnected(logReason);
             Report.ForceSave();
 
@@ -645,6 +685,13 @@ namespace Server.MirObjects
                 ReceiveChat("New mail has arrived.", ChatType.System);
 
                 GetMail();
+            }
+
+            if (Account.ExpandedStorageExpiryDate < Envir.Now && Account.HasExpandedStorage)
+            {
+                Account.HasExpandedStorage = false;
+                ReceiveChat("Expanded storage has expired.", ChatType.System);
+                Enqueue(new S.ResizeStorage { Size = Account.Storage.Length, HasExpandedStorage = Account.HasExpandedStorage, ExpiryTime = Account.ExpandedStorageExpiryDate });
             }
 
             if (Envir.Time > IncreaseLoyaltyTime && Mount.HasMount)
@@ -837,7 +884,7 @@ namespace Server.MirObjects
 
             if (IsGM && !isGM)
             {
-                AddBuff(new Buff { Type = BuffType.GameMaster, Caster = this, ExpireTime = Envir.Time + 100, Values = new int[] { 0 }, Infinite = true });
+                AddBuff(new Buff { Type = BuffType.GameMaster, Caster = this, ExpireTime = Envir.Time + 100, Values = new int[] { 0 }, Infinite = true, Visible = Settings.GameMasterEffect });
             }
         }
         private void ProcessRegen()
@@ -1066,38 +1113,53 @@ namespace Server.MirObjects
 
         private void ProcessItems()
         {
-            for (int i = 0; i < Info.Inventory.Length; i++)
+            for (var i = 0; i < Info.Inventory.Length; i++)
             {
-                UserItem item = Info.Inventory[i];
+                var item = Info.Inventory[i];
 
-                if (item == null || item.ExpireInfo == null) continue;
-
-                if (DateTime.Now > item.ExpireInfo.ExpiryDate)
+                if (item?.ExpireInfo?.ExpiryDate <= Envir.Now)
                 {
+                    ReceiveChat($"{item.Info.FriendlyName} has just expired from your inventory.", ChatType.Hint);
                     Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = item.Count });
                     Info.Inventory[i] = null;
-                    ReceiveChat(string.Format("{0} has just expired from your inventory.", item.Info.FriendlyName), ChatType.Hint);
+
+                    continue;
                 }
+
+                if (item?.RentalInformation?.RentalLocked != true ||
+                    !(item?.RentalInformation?.ExpiryDate <= Envir.Now))
+                    continue;
+
+                ReceiveChat($"The rental lock has been removed from {item.Info.FriendlyName}.", ChatType.Hint);
+                item.RentalInformation = null;
             }
 
-            for (int i = 0; i < Info.Equipment.Length; i++)
+            for (var i = 0; i < Info.Equipment.Length; i++)
             {
-                UserItem item = Info.Equipment[i];
+                var item = Info.Equipment[i];
 
-                if (item == null || item.ExpireInfo == null) continue;
-
-                if (DateTime.Now > item.ExpireInfo.ExpiryDate)
+                if (item?.ExpireInfo?.ExpiryDate <= Envir.Now)
                 {
+                    ReceiveChat($"{item.Info.FriendlyName} has just expired from your equipment.", ChatType.Hint);
                     Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = item.Count });
                     Info.Equipment[i] = null;
-                    ReceiveChat(string.Format("{0} has just expired from your equipment.", item.Info.FriendlyName), ChatType.Hint);
+
+                    continue;
                 }
+
+                if (item?.RentalInformation?.RentalLocked != true ||
+                    !(item?.RentalInformation?.ExpiryDate <= Envir.Now))
+                    continue;
+
+                ReceiveChat($"The rental lock has been removed from {item.Info.FriendlyName}.", ChatType.Hint);
+                item.RentalInformation = null;
             }
         }
 
         public override void Process(DelayedAction action)
         {
-            if (action.FlaggedToRemove) return;
+            if (action.FlaggedToRemove)
+                return;
 
             switch (action.Type)
             {
@@ -1135,6 +1197,15 @@ namespace Server.MirObjects
             if (!Dead && HP == 0) Die();
 
             //HealthChanged = true;
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(Info);
+                    ctx.Entry(Info).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             Enqueue(new S.HealthChanged { HP = HP, MP = MP });
             BroadcastHealthChange();
         }
@@ -1146,6 +1217,15 @@ namespace Server.MirObjects
             MP = GMNeverDie ? MaxMP : MP;
 
             // HealthChanged = true;
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(Info);
+                    ctx.Entry(Info).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             Enqueue(new S.HealthChanged { HP = HP, MP = MP });
             BroadcastHealthChange();
         }
@@ -1168,7 +1248,15 @@ namespace Server.MirObjects
             HP = GMNeverDie ? MaxHP : HP;
 
             if (!Dead && HP == 0) Die();
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(Info);
+                    ctx.Entry(Info).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             // HealthChanged = true;
             Enqueue(new S.HealthChanged { HP = HP, MP = MP });
             BroadcastHealthChange();
@@ -1289,121 +1377,179 @@ namespace Server.MirObjects
 
         private void DeathDrop(MapObject killer)
         {
-            bool pkbodydrop = true;
-            if (CurrentMap.Info.NoDropPlayer && Race == ObjectType.Player) return;
+            var pkbodydrop = true;
+
+            if (CurrentMap.Info.NoDropPlayer && Race == ObjectType.Player)
+                return;
 
             if ((killer == null) || ((pkbodydrop) || (killer.Race != ObjectType.Player)))
             {
-                UserItem temp;
-
-                for (int i = 0; i < Info.Equipment.Length; i++)
+                for (var i = 0; i < Info.Equipment.Length; i++)
                 {
-                    temp = Info.Equipment[i];
+                    var item = Info.Equipment[i];
 
-                    if (temp == null) continue;
-                    if (temp.Info.Bind.HasFlag(BindMode.DontDeathdrop)) continue;
-                    if ((temp.WeddingRing != -1) && (Info.Equipment[(int)EquipmentSlot.RingL].UniqueID == temp.UniqueID)) continue; //CHECK THIS
-
-                    if ((temp != null) && ((killer == null) || ((killer != null) && (killer.Race != ObjectType.Player))))
+                    if (item == null) continue;
+                    if (item.Info == null)
                     {
-                        if (temp.Info.Bind.HasFlag(BindMode.BreakOnDeath))
+                        using (var ctx = new DataContext())
+                        {
+                            item.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == item.ItemIndex);
+                        }
+                    }
+
+                    if (item.Info.Bind.HasFlag(BindMode.DontDeathdrop))
+                        continue;
+
+                    // TODO: Check this.
+                    if (item.WeddingRing != -1 && Info.Equipment[(int)EquipmentSlot.RingL].UniqueID == item.UniqueID)
+                        continue;
+
+                    if (((killer == null) || ((killer != null) && (killer.Race != ObjectType.Player))))
+                    {
+                        if (item.Info.Bind.HasFlag(BindMode.BreakOnDeath))
                         {
                             Info.Equipment[i] = null;
-                            Enqueue(new S.DeleteItem { UniqueID = temp.UniqueID, Count = temp.Count });
-                            ReceiveChat(string.Format("Your {0} shattered upon death.", temp.FriendlyName), ChatType.System2);
-                            Report.ItemChanged("DeathDrop", temp, temp.Count, 1);
+                            Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = item.Count });
+                            ReceiveChat($"Your {item.FriendlyName} shattered upon death.", ChatType.System2);
+                            Report.ItemChanged("Death Drop", item, item.Count, 1);
                         }
                     }
                     if (ItemSets.Any(set => set.Set == ItemSet.Spirit && !set.SetComplete))
                     {
-                        if (temp.Info.Set == ItemSet.Spirit)
+                        if (item.Info.Set == ItemSet.Spirit)
                         {
                             Info.Equipment[i] = null;
-                            Enqueue(new S.DeleteItem { UniqueID = temp.UniqueID, Count = temp.Count });
+                            Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = item.Count });
 
-                            Report.ItemChanged("DeathDrop", temp, temp.Count, 1);
+                            Report.ItemChanged("Death Drop", item, item.Count, 1);
                         }
                     }
 
-                    if (temp.Count > 1)
+                    if (item.Count > 1)
                     {
-                        int percent = Envir.RandomomRange(10, 8);
+                        var percent = Envir.RandomomRange(10, 8);
+                        var count = (uint)Math.Ceiling(item.Count / 10F * percent);
 
-                        uint count = (uint)Math.Ceiling(temp.Count / 10F * percent);
-
-                        if (count > temp.Count)
+                        if (count > item.Count)
                             throw new ArgumentOutOfRangeException();
-
-                        UserItem temp2 = Envir.CreateFreshItem(temp.Info);
+                        
+                        var temp2 = Envir.CreateFreshItem(item.Info);
                         temp2.Count = count;
 
-                        if (DropItem(temp2, Settings.DropRange, true))
-                        {
-                            if (count == temp.Count)
+                        if (!DropItem(temp2, Settings.DropRange, true))
+                            continue;
+
+                        if (count == item.Count)
                                 Info.Equipment[i] = null;
 
-                            Enqueue(new S.DeleteItem { UniqueID = temp.UniqueID, Count = count });
-                            temp.Count -= count;
+                        Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = count });
+                        item.Count -= count;
 
-                            Report.ItemChanged("DeathDrop", temp, count, 1);
+                        Report.ItemChanged("Death Drop", item, count, 1);
                         }
-                    }
                     else if (Envir.Random.Next(30) == 0)
                     {
-                        if (DropItem(temp, Settings.DropRange, true))
+                        if (Envir.ReturnRentalItem(item, item.RentalInformation?.OwnerName, Info))
                         {
                             Info.Equipment[i] = null;
-                            Enqueue(new S.DeleteItem { UniqueID = temp.UniqueID, Count = temp.Count });
+                            Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = item.Count });
+   
+                            ReceiveChat($"You died and {item.Info.FriendlyName} has been returned to it's owner.", ChatType.Hint);
+                            Report.ItemMailed("Death Dropped Rental Item", item, 1, 1);
 
-                            Report.ItemChanged("DeathDrop", temp, temp.Count, 1);
+                            continue;
                         }
+
+                        if (!DropItem(item, Settings.DropRange, true))
+                            continue;
+
+                        if (item.Info.GlobalDropNotify)
+                            foreach (var player in Envir.Players)
+                            {
+                                player.ReceiveChat($"{Name} has dropped {item.FriendlyName}.", ChatType.System2);
                     }
+
+                        Info.Equipment[i] = null;
+                        Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = item.Count });
+
+                        Report.ItemChanged("Death Drop", item, item.Count, 1);
+                }
                 }
 
             }
 
-            for (int i = 0; i < Info.Inventory.Length; i++)
+            for (var i = 0; i < Info.Inventory.Length; i++)
             {
-                UserItem temp = Info.Inventory[i];
+                var item = Info.Inventory[i];
 
-                if (temp == null) continue;
-                if (temp.Info.Bind.HasFlag(BindMode.DontDeathdrop)) continue;
-                if (temp.WeddingRing != -1) continue;
-
-                if (temp.Count > 1)
+                if (item == null) continue;
+                if (item.Info == null)
                 {
-                    int percent = Envir.RandomomRange(10, 8);
-                    if (percent == 0) continue;
+                    using (var ctx = new DataContext())
+                    {
+                        item.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == item.ItemIndex);
+                    }
+                }
 
-                    uint count = (uint)Math.Ceiling(temp.Count / 10F * percent);
+                if (item.Info.Bind.HasFlag(BindMode.DontDeathdrop))
+                    continue;
 
-                    if (count > temp.Count)
+                if (item.WeddingRing != -1)
+                    continue;
+
+                if (item.Count > 1)
+                {
+                    var percent = Envir.RandomomRange(10, 8);
+
+                    if (percent == 0)
+                        continue;
+
+                    var count = (uint)Math.Ceiling(item.Count / 10F * percent);
+
+                    if (count > item.Count)
                         throw new ArgumentOutOfRangeException();
 
-                    UserItem temp2 = Envir.CreateFreshItem(temp.Info);
+                    var temp2 = Envir.CreateFreshItem(item.Info);
                     temp2.Count = count;
 
-                    if (DropItem(temp2, Settings.DropRange, true))
-                    {
-                        if (count == temp.Count)
+                    if (!DropItem(temp2, Settings.DropRange, true))
+                        continue;
+
+                    if (count == item.Count)
                             Info.Inventory[i] = null;
 
-                        Enqueue(new S.DeleteItem { UniqueID = temp.UniqueID, Count = count });
-                        temp.Count -= count;
+                    Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = count });
+                    item.Count -= count;
 
-                        Report.ItemChanged("DeathDrop", temp, count, 1);
+                    Report.ItemChanged("DeathDrop", item, count, 1);
                     }
-                }
                 else if (Envir.Random.Next(10) == 0)
                 {
-                    if (DropItem(temp, Settings.DropRange, true))
+                    if (Envir.ReturnRentalItem(item, item.RentalInformation?.OwnerName, Info))
                     {
                         Info.Inventory[i] = null;
-                        Enqueue(new S.DeleteItem { UniqueID = temp.UniqueID, Count = temp.Count });
+                        Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = item.Count });
 
-                        Report.ItemChanged("DeathDrop", temp, temp.Count, 1);
+                        ReceiveChat($"You died and {item.Info.FriendlyName} has been returned to has been returned to it's owner.", ChatType.Hint);
+                        Report.ItemMailed("Death Dropped Rental Item", item, 1, 1);
+
+                        continue;
                     }
+
+                    if (!DropItem(item, Settings.DropRange, true))
+                        continue;
+
+                    if (item.Info.GlobalDropNotify)
+                        foreach (var player in Envir.Players)
+                        {
+                            player.ReceiveChat($"{Name} has dropped {item.FriendlyName}.", ChatType.System2);
                 }
+
+                    Info.Inventory[i] = null;
+                    Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = item.Count });
+
+                    Report.ItemChanged("DeathDrop", item, item.Count, 1);
+            }
             }
 
             RefreshStats();
@@ -1412,75 +1558,130 @@ namespace Server.MirObjects
         {
             if (killer == null || killer.Race != ObjectType.Player)
             {
-                UserItem temp;
-
-                for (int i = 0; i < Info.Equipment.Length; i++)
+                for (var i = 0; i < Info.Equipment.Length; i++)
                 {
-                    temp = Info.Equipment[i];
+                    var item = Info.Equipment[i];
 
-                    if (temp == null) continue;
-                    if (temp.Info.Bind.HasFlag(BindMode.DontDeathdrop)) continue;
-                    if ((temp.WeddingRing != -1) && (Info.Equipment[(int)EquipmentSlot.RingL].UniqueID == temp.UniqueID)) continue; //CHECK THIS
+                    if (item == null) continue;
+                    if (item.Info == null)
+                    {
+                        using (var ctx = new DataContext())
+                        {
+                            item.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == item.ItemIndex);
+                        }
+                    }
 
-                    if (temp.Info.Bind.HasFlag(BindMode.BreakOnDeath))
+                    if (item.Info.Bind.HasFlag(BindMode.DontDeathdrop))
+                        continue;
+
+                    // TODO: Check this.
+                    if ((item.WeddingRing != -1) && (Info.Equipment[(int)EquipmentSlot.RingL].UniqueID == item.UniqueID))
+                        continue;
+
+                    if (item.Info.Bind.HasFlag(BindMode.BreakOnDeath))
                     {
                         Info.Equipment[i] = null;
-                        Enqueue(new S.DeleteItem { UniqueID = temp.UniqueID, Count = temp.Count });
-                        ReceiveChat(string.Format("Your {0} shattered upon death.", temp.FriendlyName), ChatType.System2);
-                        Report.ItemChanged("RedDeathDrop", temp, temp.Count, 1);
+                        Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = item.Count });
+                        ReceiveChat($"Your {item.FriendlyName} shattered upon death.", ChatType.System2);
+                        Report.ItemChanged("RedDeathDrop", item, item.Count, 1);
                     }
 
-                    if (temp.Count > 1)
+                    if (item.Count > 1)
                     {
-                        int percent = Envir.RandomomRange(10, 4);
+                        var percent = Envir.RandomomRange(10, 4);
+                        var count = (uint)Math.Ceiling(item.Count / 10F * percent);
 
-                        uint count = (uint)Math.Ceiling(temp.Count / 10F * percent);
-
-                        if (count > temp.Count)
+                        if (count > item.Count)
                             throw new ArgumentOutOfRangeException();
 
-                        UserItem temp2 = Envir.CreateFreshItem(temp.Info);
+                        var temp2 = Envir.CreateFreshItem(item.Info);
                         temp2.Count = count;
 
-                        if (DropItem(temp2, Settings.DropRange, true))
-                        {
-                            if (count == temp.Count)
+                        if (!DropItem(temp2, Settings.DropRange, true))
+                            continue;
+
+                        if (count == item.Count)
                                 Info.Equipment[i] = null;
 
-                            Enqueue(new S.DeleteItem { UniqueID = temp.UniqueID, Count = count });
-                            temp.Count -= count;
+                        Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = count });
+                        item.Count -= count;
 
-                            Report.ItemChanged("RedDeathDrop", temp, count, 1);
+                        Report.ItemChanged("RedDeathDrop", item, count, 1);
                         }
-                    }
                     else if (Envir.Random.Next(10) == 0)
                     {
-                        if (DropItem(temp, Settings.DropRange, true))
+                        if (Envir.ReturnRentalItem(item, item.RentalInformation?.OwnerName, Info))
                         {
                             Info.Equipment[i] = null;
-                            Enqueue(new S.DeleteItem { UniqueID = temp.UniqueID, Count = temp.Count });
+                            Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = item.Count });
 
-                            Report.ItemChanged("RedDeathDrop", temp, temp.Count, 1);
+                            ReceiveChat($"You died and {item.Info.FriendlyName} has been returned to it's owner.", ChatType.Hint);
+                            Report.ItemMailed("Death Dropped Rental Item", item, 1, 1);
+
+                            continue;
                         }
+
+                        if (!DropItem(item, Settings.DropRange, true))
+                            continue;
+
+                        if (item.Info.GlobalDropNotify)
+                            foreach (var player in Envir.Players)
+                            {
+                                player.ReceiveChat($"{Name} has dropped {item.FriendlyName}.", ChatType.System2);
                     }
+
+                        Info.Equipment[i] = null;
+                        Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = item.Count });
+
+                        Report.ItemChanged("RedDeathDrop", item, item.Count, 1);
+                }
                 }
 
             }
 
-            for (int i = 0; i < Info.Inventory.Length; i++)
+            for (var i = 0; i < Info.Inventory.Length; i++)
             {
-                UserItem temp = Info.Inventory[i];
+                var item = Info.Inventory[i];
 
-                if (temp == null) continue;
-                if (temp.Info.Bind.HasFlag(BindMode.DontDeathdrop)) continue;
-                if (temp.WeddingRing != -1) continue;
+                if (item == null) continue;
+                if (item.Info == null)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        item.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == item.ItemIndex);
+                    }
+                }
 
-                if (!DropItem(temp, Settings.DropRange, true)) continue;
+                if (item.Info.Bind.HasFlag(BindMode.DontDeathdrop))
+                    continue;
+
+                if (item.WeddingRing != -1)
+                    continue;
+
+                if (Envir.ReturnRentalItem(item, item.RentalInformation?.OwnerName, Info))
+                {
+                Info.Inventory[i] = null;
+                    Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = item.Count });
+
+                    ReceiveChat($"You died and {item.Info.FriendlyName} has been returned to it's owner.", ChatType.Hint);
+                    Report.ItemMailed("Death Dropped Rental Item", item, 1, 1);
+
+                    continue;
+            }
+
+                if (!DropItem(item, Settings.DropRange, true))
+                    continue;
+
+                if (item.Info.GlobalDropNotify)
+                    foreach (var player in Envir.Players)
+                    {
+                        player.ReceiveChat($"{Name} has dropped {item.FriendlyName}.", ChatType.System2);
+                    }
 
                 Info.Inventory[i] = null;
-                Enqueue(new S.DeleteItem { UniqueID = temp.UniqueID, Count = temp.Count });
+                Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = item.Count });
 
-                Report.ItemChanged("RedDeathDrop", temp, temp.Count, 1);
+                Report.ItemChanged("RedDeathDrop", item, item.Count, 1);
             }
 
             RefreshStats();
@@ -1610,7 +1811,15 @@ namespace Server.MirObjects
             Experience = experience;
 
             LevelUp();
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(Info);
+                    ctx.Entry(Info).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             if (IsGM) return;
             if ((LastRankUpdate + 3600 * 1000) > Envir.Time)
             {
@@ -1690,9 +1899,8 @@ namespace Server.MirObjects
 
                 return;
             }
-
-
         }
+
         private void AddItem(UserItem item)
         {
             if (item.Info.StackSize > 1) //Stackable
@@ -1705,10 +1913,28 @@ namespace Server.MirObjects
                     if (item.Count + temp.Count <= temp.Info.StackSize)
                     {
                         temp.Count += item.Count;
+                        if (Settings.UseSQLServer)
+                        {
+                            using (var ctx = new DataContext())
+                            {
+                                ctx.UserItems.Attach(temp);
+                                ctx.Entry(temp).State = EntityState.Modified;
+                                ctx.SaveChanges();
+                            }
+                        }
                         return;
                     }
                     item.Count -= temp.Info.StackSize - temp.Count;
                     temp.Count = temp.Info.StackSize;
+                    if (Settings.UseSQLServer)
+                    {
+                        using (var ctx = new DataContext())
+                        {
+                            ctx.UserItems.Attach(temp);
+                            ctx.Entry(temp).State = EntityState.Modified;
+                            ctx.SaveChanges();
+                        }
+                    }
                 }
             }
 
@@ -1718,6 +1944,20 @@ namespace Server.MirObjects
                 {
                     if (Info.Inventory[i] != null) continue;
                     Info.Inventory[i] = item;
+                    if (Settings.UseSQLServer)
+                    {
+                        using (var ctx = new DataContext())
+                        {
+                            ctx.UserItems.Attach(item);
+                            ctx.Entry(item).State = EntityState.Added;
+                            var dbIvt = ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(i).FirstOrDefault();
+                            if (dbIvt != null)
+                            {
+                                dbIvt.ItemUniqueID = item.UniqueID;
+                            }
+                            ctx.SaveChanges();
+                        }
+                    }
                     return;
                 }
             }
@@ -1727,6 +1967,20 @@ namespace Server.MirObjects
                 {
                     if (Info.Inventory[i] != null) continue;
                     Info.Inventory[i] = item;
+                    if (Settings.UseSQLServer)
+                    {
+                        using (var ctx = new DataContext())
+                        {
+                            ctx.UserItems.Attach(item);
+                            ctx.Entry(item).State = EntityState.Added;
+                            var dbIvt = ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(i).FirstOrDefault();
+                            if (dbIvt != null)
+                            {
+                                dbIvt.ItemUniqueID = item.UniqueID;
+                            }
+                            ctx.SaveChanges();
+                        }
+                    }
                     return;
                 }
             }
@@ -1736,6 +1990,20 @@ namespace Server.MirObjects
                 {
                     if (Info.Inventory[i] != null) continue;
                     Info.Inventory[i] = item;
+                    if (Settings.UseSQLServer)
+                    {
+                        using (var ctx = new DataContext())
+                        {
+                            ctx.UserItems.Attach(item);
+                            ctx.Entry(item).State = EntityState.Added;
+                            var dbIvt = ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(i).FirstOrDefault();
+                            if (dbIvt != null)
+                            {
+                                dbIvt.ItemUniqueID = item.UniqueID;
+                            }
+                            ctx.SaveChanges();
+                        }
+                    }
                     return;
                 }
             }
@@ -1744,6 +2012,20 @@ namespace Server.MirObjects
             {
                 if (Info.Inventory[i] != null) continue;
                 Info.Inventory[i] = item;
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        ctx.UserItems.Attach(item);
+                        ctx.Entry(item).State = EntityState.Added;
+                        var dbIvt = ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(i).FirstOrDefault();
+                        if (dbIvt != null)
+                        {
+                            dbIvt.ItemUniqueID = item.UniqueID;
+                        }
+                        ctx.SaveChanges();
+                    }
+                }
                 return;
             }
         }
@@ -1802,6 +2084,13 @@ namespace Server.MirObjects
         }
         public void CheckItem(UserItem item)
         {
+            if (item.Info == null)
+            {
+                using (var ctx = new DataContext())
+                {
+                    item.Info = ctx.ItemInfos.FirstOrDefault(i => i.Index == item.ItemIndex);
+                }
+            }
             CheckItemInfo(item.Info);
 
             for (int i = 0; i < item.Slots.Length; i++)
@@ -1888,11 +2177,11 @@ namespace Server.MirObjects
                 Info.Magics[i].CastTime = Envir.Time > TimeSpend ? Envir.Time - TimeSpend : 0;
             }
             Enqueue(new S.StartGame { Result = 4, Resolution = Settings.AllowedResolution });
-            ReceiveChat("Welcome to the Legend of Mir 2 Crystal Server.", ChatType.Hint);
+            ReceiveChat("欢迎来到此服务器.", ChatType.Hint);
 
             if (Settings.TestServer)
             {
-                ReceiveChat("Game is currently in test mode.", ChatType.Hint);
+                ReceiveChat("服务器现在是测试模式.", ChatType.Hint);
                 Chat("@GAMEMASTER");
             }
 
@@ -1902,7 +2191,7 @@ namespace Server.MirObjects
                 if (MyGuild == null)
                 {
                     Info.GuildIndex = -1;
-                    ReceiveChat("You have been removed from the guild.", ChatType.System);
+                    ReceiveChat("你被公会请出.", ChatType.System);
                 }
                 else
                 {
@@ -1911,7 +2200,7 @@ namespace Server.MirObjects
                     {
                         MyGuild = null;
                         Info.GuildIndex = -1;
-                        ReceiveChat("You have been removed from the guild.", ChatType.System);
+                        ReceiveChat("你被公会请出.", ChatType.System);
                     }
                 }
             }
@@ -2036,7 +2325,7 @@ namespace Server.MirObjects
 
             Report.Connected(Connection.IPAddress);
 
-            SMain.Enqueue(string.Format("{0} has connected.", Info.Name));
+            SMain.Enqueue(string.Format("{0} 已连接.", Info.Name));
             
             if (IsGM) return;
             LastRankUpdate = Envir.Time;
@@ -2116,6 +2405,15 @@ namespace Server.MirObjects
             Broadcast(new S.ObjectRevived { ObjectID = ObjectID, Effect = effect });
 
             Fishing = false;
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(Info);
+                    ctx.Entry(Info).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             Enqueue(GetFishInfo());
         }
         public void TownRevive()
@@ -2169,7 +2467,15 @@ namespace Server.MirObjects
             Enqueue(new S.Revived());
             Broadcast(new S.ObjectRevived { ObjectID = ObjectID, Effect = true });
 
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(Info);
+                    ctx.Entry(Info).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             InSafeZone = true;
             Fishing = false;
             Enqueue(GetFishInfo());
@@ -2234,7 +2540,8 @@ namespace Server.MirObjects
                 QuestInventory = new UserItem[Info.QuestInventory.Length],
                 Gold = Account.Gold,
                 Credit = Account.Credit,
-                AddedStorage = Account.Storage.Length > 80
+                HasExpandedStorage = Account.ExpandedStorageExpiryDate > Envir.Now ? true : false,
+                ExpandedStorageExpiryTime = Account.ExpandedStorageExpiryDate
             };
 
             //Copy this method to prevent modification before sending packet information.
@@ -2484,13 +2791,24 @@ namespace Server.MirObjects
             {
                 UserItem item = Info.Inventory[i];
                 if (item != null)
+                {
+                    if (item.Info == null)
+                    {
+                        using (var ctx = new DataContext())
+                        {
+                            item.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == item.ItemIndex);
+                        }
+                    }
                     CurrentBagWeight = (ushort)Math.Min(ushort.MaxValue, CurrentBagWeight + item.Weight);
+                }
+                    
             }
         }
 
         private void RefreshEquipmentStats()
         {
             short OldLooks_Weapon = Looks_Weapon;
+			short OldLooks_WeaponEffect = Looks_WeaponEffect;
             short OldLooks_Armour = Looks_Armour;
             short Old_MountType = MountType;
             byte OldLooks_Wings = Looks_Wings;
@@ -2498,6 +2816,7 @@ namespace Server.MirObjects
 
             Looks_Armour = 0;
             Looks_Weapon = -1;
+			Looks_WeaponEffect = 0;
             Looks_Wings = 0;
             Light = 0;
             CurrentWearWeight = 0;
@@ -2525,6 +2844,13 @@ namespace Server.MirObjects
             {
                 UserItem temp = Info.Equipment[i];
                 if (temp == null) continue;
+                if (temp.Info == null)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        temp.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == temp.ItemIndex);
+                    }
+                }
                 ItemInfo RealItem = Functions.GetRealItem(temp.Info, Info.Level, Info.Class, Envir.ItemInfoList);
                 if (RealItem.Type == ItemType.Weapon || RealItem.Type == ItemType.Torch)
                     CurrentHandWeight = (ushort)Math.Min(byte.MaxValue, CurrentHandWeight + temp.Weight);
@@ -2611,7 +2937,10 @@ namespace Server.MirObjects
                 }
 
                 if (RealItem.Type == ItemType.Weapon)
+				{
                     Looks_Weapon = RealItem.Shape;
+					Looks_WeaponEffect = RealItem.Effect;
+				}
 
                 if (RealItem.Type == ItemType.Mount)
                 {
@@ -2655,7 +2984,7 @@ namespace Server.MirObjects
                 MaxWearWeight = Math.Min(ushort.MaxValue, (ushort)(MaxWearWeight * 2));
                 MaxHandWeight = Math.Min(ushort.MaxValue, (ushort)(MaxHandWeight * 2));
             }
-            if ((OldLooks_Armour != Looks_Armour) || (OldLooks_Weapon != Looks_Weapon) || (OldLooks_Wings != Looks_Wings) || (OldLight != Light))
+            if ((OldLooks_Armour != Looks_Armour) || (OldLooks_Weapon != Looks_Weapon) || (OldLooks_WeaponEffect != Looks_WeaponEffect) || (OldLooks_Wings != Looks_Wings) || (OldLight != Light))
             {
                 Broadcast(GetUpdateInfo());
 
@@ -2667,7 +2996,7 @@ namespace Server.MirObjects
 
             if (Old_MountType != MountType)
             {
-                RefreshMount();
+                RefreshMount(false);
             }
         }
 
@@ -2902,7 +3231,13 @@ namespace Server.MirObjects
             {
                 UserItem temp = Slots[i];
                 if (temp == null) continue;
-
+                if (temp.Info == null)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        temp.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == temp.ItemIndex);
+                    }
+                }
                 ItemInfo RealItem = Functions.GetRealItem(temp.Info, Info.Level, Info.Class, Envir.ItemInfoList);
 
                 CurrentWearWeight = (ushort)Math.Min(ushort.MaxValue, CurrentWearWeight + temp.Weight);
@@ -3277,14 +3612,14 @@ namespace Server.MirObjects
                 if (message == GMPassword)
                 {
                     IsGM = true;
-                    SMain.Enqueue(string.Format("{0} is now a GM", Name));
-                    ReceiveChat("You have been made a GM", ChatType.System);
+                    SMain.Enqueue(string.Format("{0} 现在是 GM", Name));
+                    ReceiveChat("你已成为 GM", ChatType.System);
                     Envir.RemoveRank(Info);//remove gm chars from ranking to avoid causing bugs in rank list
                 }
                 else
                 {
-                    SMain.Enqueue(string.Format("{0} attempted a GM login", Name));
-                    ReceiveChat("Incorrect login password", ChatType.System);
+                    SMain.Enqueue(string.Format("{0} 尝试 GM 登录", Name));
+                    ReceiveChat("密码错误", ChatType.System);
                 }
                 GMLogin = false;
                 return;
@@ -3294,7 +3629,7 @@ namespace Server.MirObjects
             {
                 if (Info.ChatBanExpiryDate > DateTime.Now)
                 {
-                    ReceiveChat("You are currently banned from chatting.", ChatType.System);
+                    ReceiveChat("你现在被禁止聊天.", ChatType.System);
                     return;
                 }
 
@@ -3308,7 +3643,7 @@ namespace Server.MirObjects
                     {
                         Info.ChatBanned = true;
                         Info.ChatBanExpiryDate = DateTime.Now.AddMinutes(5);
-                        ReceiveChat("You have been banned from chatting for 5 minutes.", ChatType.System);
+                        ReceiveChat("你被禁止聊天5分钟.", ChatType.System);
                         return;
                     }
 
@@ -3344,19 +3679,19 @@ namespace Server.MirObjects
                         creature.ReceiveChat(message.Remove(0, parts[0].Length), ChatType.WhisperIn);
                         return;
                     }
-                    ReceiveChat(string.Format("Could not find {0}.", parts[0]), ChatType.System);
+                    ReceiveChat(string.Format("没有找到 {0}.", parts[0]), ChatType.System);
                     return;
                 }
 
                 if (player.Info.Friends.Any(e => e.Info == Info && e.Blocked))
                 {
-                    ReceiveChat("Player is not accepting your messages.", ChatType.System);
+                    ReceiveChat("玩家不接受你的消息.", ChatType.System);
                     return;
                 }
 
                 if (Info.Friends.Any(e => e.Info == player.Info && e.Blocked))
                 {
-                    ReceiveChat("Cannot message player whilst they are on your blacklist.", ChatType.System);
+                    ReceiveChat("你不能给你黑名单上的人发消息.", ChatType.System);
                     return;
                 }
 
@@ -3410,12 +3745,12 @@ namespace Server.MirObjects
                 //Shout
                 if (Envir.Time < ShoutTime)
                 {
-                    ReceiveChat(string.Format("You cannot shout for another {0} seconds.", Math.Ceiling((ShoutTime - Envir.Time) / 1000D)), ChatType.System);
+                    ReceiveChat(string.Format("在 {0} 秒内不能喊话.", Math.Ceiling((ShoutTime - Envir.Time) / 1000D)), ChatType.System);
                     return;
                 }
                 if (Level < 8 && (!HasMapShout && !HasServerShout))
                 {
-                    ReceiveChat("You need to be level 8 before you can shout.", ChatType.System);
+                    ReceiveChat("你要到8级才能喊话.", ChatType.System);
                     return;
                 }
 
@@ -3472,7 +3807,7 @@ namespace Server.MirObjects
             
                 if (player == null)
                 {
-                    ReceiveChat(string.Format("{0} isn't online.", Lover.Name), ChatType.System);
+                    ReceiveChat(string.Format("{0} 不在线.", Lover.Name), ChatType.System);
                     return;
                 }
 
@@ -3507,7 +3842,7 @@ namespace Server.MirObjects
                 {
                     case "LOGIN":
                         GMLogin = true;
-                        ReceiveChat("Please type the GM Password", ChatType.Hint);
+                        ReceiveChat("请输入GM密码", ChatType.Hint);
                         return;
 
                     case "KILL":
@@ -3519,7 +3854,7 @@ namespace Server.MirObjects
 
                             if (player == null)
                             {
-                                ReceiveChat(string.Format("Could not find {0}", parts[0]), ChatType.System);
+                                ReceiveChat(string.Format("没有找到 {0}", parts[0]), ChatType.System);
                                 return;
                             }
                             if (!player.GMNeverDie) player.Die();
@@ -3559,15 +3894,15 @@ namespace Server.MirObjects
 
                         if (data == null)
                         {
-                            ReceiveChat(string.Format("Player {0} was not found", parts[1]), ChatType.System);
+                            ReceiveChat(string.Format("玩家 {0} 没有找到", parts[1]), ChatType.System);
                             return;
                         }
 
                         if (!data.Deleted) return;
                         data.Deleted = false;
 
-                        ReceiveChat(string.Format("Player {0} has been restored by", data.Name), ChatType.System);
-                        SMain.Enqueue(string.Format("Player {0} has been restored by {1}", data.Name, Name));
+                        ReceiveChat(string.Format("玩家 {0} 已经被恢复", data.Name), ChatType.System);
+                        SMain.Enqueue(string.Format("玩家 {0} 已经被 {1} 恢复", data.Name, Name));
 
                         break;
 
@@ -3588,8 +3923,8 @@ namespace Server.MirObjects
                                 break;
                         }
 
-                        ReceiveChat(string.Format("Player {0} has been changed to {1}", data.Name, data.Gender), ChatType.System);
-                        SMain.Enqueue(string.Format("Player {0} has been changed to {1} by {2}", data.Name, data.Gender, Name));
+                        ReceiveChat(string.Format("玩家 {0} 被修改为 {1}", data.Name, data.Gender), ChatType.System);
+                        SMain.Enqueue(string.Format("玩家 {0} 被 {2} 修改为 {1} ", data.Name, data.Gender, Name));
 
                         if (data.Player != null)
                             data.Player.Connection.LogOut();
@@ -3614,8 +3949,8 @@ namespace Server.MirObjects
                                 player.Level = level;
                                 player.LevelUp();
 
-                                ReceiveChat(string.Format("Player {0} has been Leveled {1} -> {2}.", player.Name, old, player.Level), ChatType.System);
-                                SMain.Enqueue(string.Format("Player {0} has been Leveled {1} -> {2} by {3}", player.Name, old, player.Level, Name));
+                                ReceiveChat(string.Format("玩家 {0} 被升级 {1} -> {2}.", player.Name, old, player.Level), ChatType.System);
+                                SMain.Enqueue(string.Format("玩家 {0} 被 {3} 升级 {1} -> {2}", player.Name, old, player.Level, Name));
                                 return;
                             }
                         }
@@ -3633,8 +3968,8 @@ namespace Server.MirObjects
                                 Level = level;
                                 LevelUp();
 
-                                ReceiveChat(string.Format("Leveled {0} -> {1}.", old, Level), ChatType.System);
-                                SMain.Enqueue(string.Format("Player {0} has been Leveled {1} -> {2} by {3}", Name, old, Level, Name));
+                                ReceiveChat(string.Format("升级 {0} -> {1}.", old, Level), ChatType.System);
+                                SMain.Enqueue(string.Format("玩家 {0} 被 {3} 升级 {1} -> {2}", Name, old, Level, Name));
                                 return;
                             }
                         }
@@ -3673,8 +4008,8 @@ namespace Server.MirObjects
                             GainItem(item);
                         }
 
-                        ReceiveChat(string.Format("{0} x{1} has been created.", iInfo.Name, tempCount), ChatType.System);
-                        SMain.Enqueue(string.Format("Player {0} has attempted to Create {1} x{2}", Name, iInfo.Name, tempCount));
+                        ReceiveChat(string.Format("{0} x{1} 被制造.", iInfo.Name, tempCount), ChatType.System);
+                        SMain.Enqueue(string.Format("玩家 {0} 制程 {1} x{2}", Name, iInfo.Name, tempCount));
                         break;
 
                     case "CLEARBAG":
@@ -3726,7 +4061,7 @@ namespace Server.MirObjects
                         break;
                     case "ALLOWGUILD":
                         EnableGuildInvite = !EnableGuildInvite;
-                        hintstring = EnableGuildInvite ? "Guild invites enabled." : "Guild invites disabled.";
+                        hintstring = EnableGuildInvite ? "允许公会邀请." : "禁止公会邀请.";
                         ReceiveChat(hintstring, ChatType.Hint);
                         break;
                     case "RECALL":
@@ -3741,7 +4076,7 @@ namespace Server.MirObjects
                         break;
                     case "ENABLEGROUPRECALL":
                         EnableGroupRecall = !EnableGroupRecall;
-                        hintstring = EnableGroupRecall ? "Group Recall Enabled." : "Group Recall Disabled.";
+                        hintstring = EnableGroupRecall ? "允许组队召唤." : "禁止组队召唤.";
                         ReceiveChat(hintstring, ChatType.Hint);
                         break;
 
@@ -3751,13 +4086,13 @@ namespace Server.MirObjects
 
                         if (CurrentMap.Info.NoRecall)
                         {
-                            ReceiveChat("You cannot recall people on this map", ChatType.System);
+                            ReceiveChat("此地图不能召唤", ChatType.System);
                             return;
                         }
 
                         if (Envir.Time < LastRecallTime)
                         {
-                            ReceiveChat(string.Format("You cannot recall for another {0} seconds", (LastRecallTime - Envir.Time) / 1000), ChatType.System);
+                            ReceiveChat(string.Format("在 {0} 秒内不能召唤", (LastRecallTime - Envir.Time) / 1000), ChatType.System);
                             return;
                         }
 
@@ -3769,7 +4104,7 @@ namespace Server.MirObjects
                                 if (GroupMembers[i].EnableGroupRecall)
                                     GroupMembers[i].Teleport(CurrentMap, CurrentLocation);
                                 else
-                                    GroupMembers[i].ReceiveChat("A recall was attempted without your permission",
+                                    GroupMembers[i].ReceiveChat("你在没有同意的情况下被召唤",
                                         ChatType.System);
                             }
                         }
@@ -3777,25 +4112,25 @@ namespace Server.MirObjects
                     case "RECALLMEMBER":
                         if (GroupMembers == null || GroupMembers[0] != this)
                         {
-                            ReceiveChat("You are not a group leader.", ChatType.System);
+                            ReceiveChat("你不是队长.", ChatType.System);
                             return;
                         }
 
                         if (Dead)
                         {
-                            ReceiveChat("You cannot recall when you are dead.", ChatType.System);
+                            ReceiveChat("死亡时不能召唤.", ChatType.System);
                             return;
                         }
 
                         if (CurrentMap.Info.NoRecall)
                         {
-                            ReceiveChat("You cannot recall people on this map", ChatType.System);
+                            ReceiveChat("此地图不能召唤", ChatType.System);
                             return;
                         }
 
                         if (Envir.Time < LastRecallTime)
                         {
-                            ReceiveChat(string.Format("You cannot recall for another {0} seconds", (LastRecallTime - Envir.Time) / 1000), ChatType.System);
+                            ReceiveChat(string.Format("在 {0} 秒内不能召唤", (LastRecallTime - Envir.Time) / 1000), ChatType.System);
                             return;
                         }
                         if (ItemSets.Any(set => set.Set == ItemSet.Recall && set.SetComplete))
@@ -3805,14 +4140,14 @@ namespace Server.MirObjects
 
                             if (player == null || !IsMember(player) || this == player)
                             {
-                                ReceiveChat((string.Format("Player {0} could not be found", parts[1])), ChatType.System);
+                                ReceiveChat((string.Format("玩家 {0} 没有找到", parts[1])), ChatType.System);
                                 return;
                             }
                             if (!player.EnableGroupRecall)
                             {
-                                player.ReceiveChat("A recall was attempted without your permission",
+                                player.ReceiveChat("你在没有同意的情况下被召唤",
                                         ChatType.System);
-                                ReceiveChat((string.Format("{0} is blocking grouprecall", player.Name)), ChatType.System);
+                                ReceiveChat((string.Format("{0} 不同意组队召唤", player.Name)), ChatType.System);
                                 return;
                             }
                             LastRecallTime = Envir.Time + 60000;
@@ -3822,7 +4157,7 @@ namespace Server.MirObjects
                         }
                         else
                         {
-                            ReceiveChat("You cannot recall without a recallset.", ChatType.System);
+                            ReceiveChat("不能在没有祈祷套的时候使用召唤.", ChatType.System);
                             return;
                         }
                         break;
@@ -3830,25 +4165,25 @@ namespace Server.MirObjects
                     case "RECALLLOVER":
                         if (Info.Married == 0)
                         {
-                            ReceiveChat("You're not married.", ChatType.System);
+                            ReceiveChat("你没有结婚.", ChatType.System);
                             return;
                         }
 
                         if (Dead)
                         {
-                            ReceiveChat("You can't recall when you are dead.", ChatType.System);
+                            ReceiveChat("死亡时不能召唤.", ChatType.System);
                             return;
                         }
 
                         if (CurrentMap.Info.NoRecall)
                         {
-                            ReceiveChat("You cannot recall people on this map", ChatType.System);
+                            ReceiveChat("此地图不能召唤", ChatType.System);
                             return;
                         }
 
                         if (Info.Equipment[(int)EquipmentSlot.RingL] == null)
                         {
-                            ReceiveChat("You need to be wearing a Wedding Ring for recall.", ChatType.System);
+                            ReceiveChat("召唤时要配带结婚戒指.", ChatType.System);
                             return;
                         }
 
@@ -3863,13 +4198,13 @@ namespace Server.MirObjects
 
                             if (player == null)
                             {
-                                ReceiveChat((string.Format("{0} is not online.", Lover.Name)), ChatType.System);
+                                ReceiveChat((string.Format("{0} 不在线.", Lover.Name)), ChatType.System);
                                 return;
                             }
 
                             if (player.Dead)
                             {
-                                ReceiveChat("You can't recall a dead player.", ChatType.System);
+                                ReceiveChat("不能召唤已死的玩家.", ChatType.System);
                                 return;
                             }
 
@@ -4316,7 +4651,7 @@ namespace Server.MirObjects
 
                         if (player == null)
                         {
-                            ReceiveChat(parts[1] + " is not online", ChatType.System);
+                            ReceiveChat(parts[1] + " 不在线", ChatType.System);
                             return;
                         }
                         if (player.CurrentMap == null) return;
@@ -4338,11 +4673,10 @@ namespace Server.MirObjects
                         break;
 
                     case "CREATEGUILD":
-                        if ((!IsGM && !Settings.TestServer) || parts.Length < 3) return;
 
-                        player = Envir.GetPlayer(parts[1]);
+                        if ((!IsGM && !Settings.TestServer) || parts.Length < 2) return;
 
-                        if (!IsGM && player != this) return;
+                        player = parts.Length < 3 ? this : Envir.GetPlayer(parts[1]);
 
                         if (player == null)
                         {
@@ -4351,23 +4685,25 @@ namespace Server.MirObjects
                         }
                         if (player.MyGuild != null)
                         {
-                            ReceiveChat(string.Format("Player {0} is already in a guild.", parts[1]), ChatType.System);
+                            ReceiveChat(string.Format("Player {0} is already in a guild.", player.Name), ChatType.System);
                             return;
                         }
-                        if ((parts[2].Length < 3) || (parts[2].Length > 20))
+
+                        String gName = parts.Length < 3 ? parts[1] : parts[2];
+                        if ((gName.Length < 3) || (gName.Length > 20))
                         {
                             ReceiveChat("Guildname is restricted to 3-20 characters.", ChatType.System);
                             return;
                         }
-                        GuildObject guild = Envir.GetGuild(parts[2]);
+                        GuildObject guild = Envir.GetGuild(gName);
                         if (guild != null)
                         {
-                            ReceiveChat(string.Format("Guild {0} already exists.", parts[2]), ChatType.System);
+                            ReceiveChat(string.Format("Guild {0} already exists.", gName), ChatType.System);
                             return;
                         }
                         player.CanCreateGuild = true;
-                        if (player.CreateGuild(parts[2]))
-                            ReceiveChat(string.Format("Successfully created guild {0}", parts[2]), ChatType.System);
+                        if (player.CreateGuild(gName))
+                            ReceiveChat(string.Format("Successfully created guild {0}", gName), ChatType.System);
                         else
                             ReceiveChat("Failed to create guild", ChatType.System);
                         player.CanCreateGuild = false;
@@ -4458,7 +4794,7 @@ namespace Server.MirObjects
 
                         if (player == null)
                         {
-                            ReceiveChat(parts[1] + " is not online", ChatType.System);
+                            ReceiveChat(parts[1] + " 不在线", ChatType.System);
                             return;
                         }
 
@@ -4714,6 +5050,15 @@ namespace Server.MirObjects
                         if (Account.Gold >= openGold)
                         {
                             Account.Gold -= openGold;
+                            if (Settings.UseSQLServer)
+                            {
+                                using (var ctx = new DataContext())
+                                {
+                                    ctx.AccountInfos.Attach(Account);
+                                    ctx.Entry(Account).State = EntityState.Modified;
+                                    ctx.SaveChanges();
+                                }
+                            }
                             Enqueue(new S.LoseGold { Gold = openGold });
                             Enqueue(new S.ResizeInventory { Size = Info.ResizeInventory() });
                             ReceiveChat("Inventory size increased.", ChatType.System);
@@ -4728,14 +5073,27 @@ namespace Server.MirObjects
 
                     case "ADDSTORAGE":
                         {
-                            int openLevel = Account.Storage.Length / 4;
-                            uint openGold = (uint)(openLevel * 1000000);
-                            if (Account.Gold >= openGold)
+                            TimeSpan addedTime = new TimeSpan(10, 0, 0, 0);
+                            uint cost = 1000000;
+
+                            if (Account.Gold >= cost)
                             {
-                                Account.Gold -= openGold;
-                                Enqueue(new S.LoseGold { Gold = openGold });
-                                Enqueue(new S.ResizeStorage { Size = Account.ResizeStorage() });
-                                ReceiveChat("Storage size increased.", ChatType.System);
+                                Account.Gold -= cost;
+                                Account.HasExpandedStorage = true;
+
+                                if (Account.ExpandedStorageExpiryDate > Envir.Now)
+                                {
+                                    Account.ExpandedStorageExpiryDate = Account.ExpandedStorageExpiryDate + addedTime;
+                                    ReceiveChat("Expanded storage time extended, expires on: " + Account.ExpandedStorageExpiryDate.ToString(), ChatType.System);
+                                }
+                                else
+                                {
+                                    Account.ExpandedStorageExpiryDate = Envir.Now + addedTime;
+                                    ReceiveChat("Storage expanded, expires on: " + Account.ExpandedStorageExpiryDate.ToString(), ChatType.System);
+                                }
+
+                                Enqueue(new S.LoseGold { Gold = cost });
+                                Enqueue(new S.ResizeStorage { Size = Account.ExpandStorage(), HasExpandedStorage = Account.HasExpandedStorage, ExpiryTime = Account.ExpandedStorageExpiryDate });
                             }
                             else
                             {
@@ -4799,7 +5157,7 @@ namespace Server.MirObjects
 
                         if (player == null)
                         {
-                            ReceiveChat(parts[1] + " is not online", ChatType.System);
+                            ReceiveChat(parts[1] + " 不在线", ChatType.System);
                             return;
                         }
 
@@ -4822,7 +5180,7 @@ namespace Server.MirObjects
 
                         if (player == null)
                         {
-                            ReceiveChat(parts[3] + " is not online", ChatType.System);
+                            ReceiveChat(parts[3] + " 不在线", ChatType.System);
                             return;
                         }
 
@@ -5113,7 +5471,19 @@ namespace Server.MirObjects
                     //break;
                 }
 
-                if (TradePartner != null) TradeCancel();
+                if (TradePartner != null)
+                    TradeCancel();
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        ctx.CharacterInfos.Attach(Info);
+                        ctx.Entry(Info).State = EntityState.Modified;
+                        ctx.SaveChanges();
+                    }
+                }
+                if (ItemRentalPartner != null)
+                    CancelItemRental();
 
                 Broadcast(new S.ObjectTurn { ObjectID = ObjectID, Direction = Direction, Location = CurrentLocation });
             }
@@ -5271,10 +5641,22 @@ namespace Server.MirObjects
             CellTime = Envir.Time + 500;
             ActionTime = Envir.Time + GetDelayTime(MoveDelay);
 
-            if (TradePartner != null) TradeCancel();
+            if (TradePartner != null)
+                TradeCancel();
+
+            if (ItemRentalPartner != null)
+                CancelItemRental();
 
             if (RidingMount) DecreaseMountLoyalty(1);
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(Info);
+                    ctx.Entry(Info).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             Enqueue(new S.UserLocation { Direction = Direction, Location = CurrentLocation });
             Broadcast(new S.ObjectWalk { ObjectID = ObjectID, Direction = Direction, Location = CurrentLocation });
 
@@ -5312,7 +5694,12 @@ namespace Server.MirObjects
                     UpdateConcentration();//Update & send to client
                 }
             }
-            if (TradePartner != null) TradeCancel();
+
+            if (TradePartner != null)
+                TradeCancel();
+
+            if (ItemRentalPartner != null)
+                CancelItemRental();
 
             if (Hidden && !HasClearRing && !Sneaking)
             {
@@ -5415,7 +5802,15 @@ namespace Server.MirObjects
 
             Enqueue(new S.UserLocation { Direction = Direction, Location = CurrentLocation });
             Broadcast(new S.ObjectRun { ObjectID = ObjectID, Direction = Direction, Location = CurrentLocation });
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(Info);
+                    ctx.Entry(Info).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
 
             for (int j = 1; j <= steps; j++)
             {
@@ -5464,7 +5859,11 @@ namespace Server.MirObjects
                 CurrentMap.GetCell(CurrentLocation).Add(this);
                 AddObjects(dir, 1);
 
-                if (TradePartner != null) TradeCancel();
+                if (TradePartner != null)
+                    TradeCancel();
+
+                if (ItemRentalPartner != null)
+                    CancelItemRental();
 
                 Enqueue(new S.Pushed { Direction = Direction, Location = CurrentLocation });
                 Broadcast(new S.ObjectPushed { ObjectID = ObjectID, Direction = Direction, Location = CurrentLocation });
@@ -5612,7 +6011,6 @@ namespace Server.MirObjects
                 {
                     switch (Buffs[i].Type)
                     {
-                        case BuffType.Hiding:
                         case BuffType.MoonLight:
                         case BuffType.DarkBody:
                             MoonLightAttack = true;
@@ -7492,6 +7890,9 @@ namespace Server.MirObjects
                 Cell cell = CurrentMap.GetCell(location);
 
                 bool blocking = false;
+
+                if (InSafeZone) blocking = true;
+
                 if (cell.Objects != null)
                 {
                     for (int c = cell.Objects.Count - 1; c >= 0; c--)
@@ -9130,6 +9531,13 @@ namespace Server.MirObjects
             for (int i = 0; i < Info.Equipment.Length; i++)
             {
                 UserItem item = Info.Equipment[i];
+                if (item != null && item.Info == null)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        item.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == item.ItemIndex);
+                    }
+                }
                 if (item != null && item.Info.Type == ItemType.Amulet && item.Info.Shape == shape && item.Count >= count)
                     return item;
             }
@@ -9141,6 +9549,13 @@ namespace Server.MirObjects
             for (int i = 0; i < Info.Equipment.Length; i++)
             {
                 UserItem item = Info.Equipment[i];
+                if (item != null && item.Info == null)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        item.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == item.ItemIndex);
+                    }
+                }
                 if (item != null && item.Info.Type == ItemType.Amulet && item.Count >= count)
                 {
                     if (shape == 0)
@@ -9161,6 +9576,13 @@ namespace Server.MirObjects
         private UserItem GetBait(int count)
         {
             UserItem item = Info.Equipment[(int)EquipmentSlot.Weapon];
+            if (item != null && item.Info == null)
+            {
+                using (var ctx = new DataContext())
+                {
+                    item.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == item.ItemIndex);
+                }
+            }
             if (item == null || item.Info.Type != ItemType.Weapon || (item.Info.Shape != 49 && item.Info.Shape != 50)) return null;
 
             UserItem bait = item.Slots[(int)FishingSlot.Bait];
@@ -9173,6 +9595,13 @@ namespace Server.MirObjects
         private UserItem GetFishingItem(FishingSlot type)
         {
             UserItem item = Info.Equipment[(int)EquipmentSlot.Weapon];
+            if (item != null && item.Info == null)
+            {
+                using (var ctx = new DataContext())
+                {
+                    item.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == item.ItemIndex);
+                }
+            }
             if (item == null || item.Info.Type != ItemType.Weapon || (item.Info.Shape != 49 && item.Info.Shape != 50)) return null;
 
             UserItem fishingItem = item.Slots[(int)type];
@@ -9184,19 +9613,42 @@ namespace Server.MirObjects
         private void DeleteFishingItem(FishingSlot type)
         {
             UserItem item = Info.Equipment[(int)EquipmentSlot.Weapon];
+            if (item != null && item.Info == null)
+            {
+                using (var ctx = new DataContext())
+                {
+                    item.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == item.ItemIndex);
+                }
+            }
             if (item == null || item.Info.Type != ItemType.Weapon || (item.Info.Shape != 49 && item.Info.Shape != 50)) return;
 
             UserItem slotItem = Info.Equipment[(int)EquipmentSlot.Weapon].Slots[(int)type];
 
             Enqueue(new S.DeleteItem { UniqueID = slotItem.UniqueID, Count = 1 });
             Info.Equipment[(int)EquipmentSlot.Weapon].Slots[(int)type] = null;
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.UserItems.Attach(Info.Equipment[(int) EquipmentSlot.Weapon]);
+                    ctx.UserItems.Attach(slotItem);
+                    ctx.Entry(Info.Equipment[(int)EquipmentSlot.Weapon]).State = EntityState.Modified;
+                    ctx.Entry(slotItem).State = EntityState.Deleted;
+                    ctx.SaveChanges();
+                }
+            }
             Report.ItemChanged("FishingConsumable", slotItem, 1, 1);
         }
         private void DamagedFishingItem(FishingSlot type, int lossDura)
         {
             UserItem item = GetFishingItem(type);
-
+            if (item != null && item.Info == null)
+            {
+                using (var ctx = new DataContext())
+                {
+                    item.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == item.ItemIndex);
+                }
+            }
             if (item != null)
             {
                 if (item.CurrentDura <= 0)
@@ -9220,9 +9672,9 @@ namespace Server.MirObjects
                 return magic;
             }
 
-
             return null;
         }
+
         public void LevelMagic(UserMagic magic)
         {
             byte exp = (byte)(Envir.Random.Next(3) + 1);
@@ -9292,7 +9744,15 @@ namespace Server.MirObjects
                 long delay = magic.GetDelay();
                 Enqueue(new S.MagicDelay { Spell = magic.Spell, Delay = delay });
             }
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.UserMagics.Attach(magic);
+                    ctx.Entry(magic).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             Enqueue(new S.MagicLeveled { Spell = magic.Spell, Level = magic.Level, Experience = magic.Experience });
 
         }
@@ -9441,7 +9901,12 @@ namespace Server.MirObjects
             if (effects) Enqueue(new S.ObjectTeleportIn { ObjectID = ObjectID, Type = effectnumber });
 
             //Cancel actions
-            if (TradePartner != null) TradeCancel();
+            if (TradePartner != null)
+                TradeCancel();
+
+            if (ItemRentalPartner != null)
+                CancelItemRental();
+
             if (RidingMount) RefreshMount();
             if (ActiveBlizzard) ActiveBlizzard = false;
 
@@ -9517,6 +9982,7 @@ namespace Server.MirObjects
             {
                 ObjectID = ObjectID,
                 Weapon = Looks_Weapon,
+				WeaponEffect = Looks_WeaponEffect,
                 Armour = Looks_Armour,
                 Light = Light,
                 WingEffect = Looks_Wings
@@ -9555,6 +10021,7 @@ namespace Server.MirObjects
                 Direction = Direction,
                 Hair = Hair,
                 Weapon = Looks_Weapon,
+				WeaponEffect = Looks_WeaponEffect,
                 Armour = Looks_Armour,
                 Light = Light,
                 Poison = CurrentPoison,
@@ -9693,13 +10160,10 @@ namespace Server.MirObjects
         {
             int armour = 0;
 
-            if (Hidden)
-            {
                 for (int i = 0; i < Buffs.Count; i++)
                 {
                     switch (Buffs[i].Type)
                     {
-                        //case BuffType.Hiding:
                         case BuffType.MoonLight:
                         case BuffType.DarkBody:
                             Buffs[i].ExpireTime = 0;
@@ -9709,7 +10173,7 @@ namespace Server.MirObjects
 
                             if (Envir.Random.Next(rate) == 0)
                             {
-                                if (HP + ((ushort)Buffs[i].Values[1]) >= MaxHP)
+                            if (HP + ( (ushort)Buffs[i].Values[1] ) >= MaxHP)
                                     SetHP(MaxHP);
                                 else
                                     ChangeHP(Buffs[i].Values[1]);
@@ -9717,7 +10181,6 @@ namespace Server.MirObjects
                             break;
                     }
                 }
-            }
 
             switch (type)
             {
@@ -9770,13 +10233,6 @@ namespace Server.MirObjects
 
             damage += attacker.AttackBonus;
 
-            if ((attacker.CriticalRate * Settings.CriticalRateWeight) > Envir.Random.Next(100))
-            {
-                CurrentMap.Broadcast(new S.ObjectEffect { ObjectID = ObjectID, Effect = SpellEffect.Critical }, CurrentLocation);
-                damage = Math.Min(int.MaxValue, damage + (int)Math.Floor(damage * (((double)attacker.CriticalDamage / (double)Settings.CriticalDamageWeight) * 10)));
-                BroadcastDamageIndicator(DamageType.Critical);
-            }
-
             if (Envir.Random.Next(100) < Reflect)
             {
                 if (attacker.IsAttackTarget(this))
@@ -9786,8 +10242,6 @@ namespace Server.MirObjects
                 }
                 return 0;
             }
-
-
 
             if (MagicShield)
                 damage -= damage * (MagicShieldLv + 2) / 10;
@@ -9799,6 +10253,13 @@ namespace Server.MirObjects
             {
                 BroadcastDamageIndicator(DamageType.Miss);
                 return 0;
+            }
+
+            if ((attacker.CriticalRate * Settings.CriticalRateWeight) > Envir.Random.Next(100))
+            {
+                CurrentMap.Broadcast(new S.ObjectEffect { ObjectID = ObjectID, Effect = SpellEffect.Critical }, CurrentLocation);
+                damage = Math.Min(int.MaxValue, damage + (int)Math.Floor(damage * (((double)attacker.CriticalDamage / (double)Settings.CriticalDamageWeight) * 10)));
+                BroadcastDamageIndicator(DamageType.Critical);
             }
 
             if (MagicShield)
@@ -9879,13 +10340,10 @@ namespace Server.MirObjects
         {
             int armour = 0;
 
-            if (Hidden)
-            {
                 for (int i = 0; i < Buffs.Count; i++)
                 {
                     switch (Buffs[i].Type)
                     {
-                        //case BuffType.Hiding:
                         case BuffType.MoonLight:
                         case BuffType.DarkBody:
                             Buffs[i].ExpireTime = 0;
@@ -9903,7 +10361,6 @@ namespace Server.MirObjects
                             break;
                     }
                 }
-            }
 
             switch (type)
             {
@@ -10020,7 +10477,6 @@ namespace Server.MirObjects
                 {
                     switch (Buffs[i].Type)
                     {
-                        //case BuffType.Hiding:
                         case BuffType.MoonLight:
                         case BuffType.DarkBody:
                             Buffs[i].ExpireTime = 0;
@@ -10139,7 +10595,26 @@ namespace Server.MirObjects
             Enqueue(addBuff);
 
             if (b.Visible) Broadcast(addBuff);
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.UserBuffs.Add(new UserBuff()
+                    {
+                        CasterName = caster,
+                        CharacterIndex = Info.Index,
+                        ExpireTime = b.ExpireTime,
+                        Infinite = b.Infinite,
+                        ObjectID = b.ObjectID,
+                        Paused = b.Paused,
+                        RealTime = b.RealTime,
+                        Type = b.Type,
+                        Visible = b.Visible,
+                        Values = b.Values,
+                    });
+                    ctx.SaveChanges();
+                }
+            }
             RefreshStats();
         }
         public void PauseBuff(Buff b)
@@ -10227,6 +10702,13 @@ namespace Server.MirObjects
                         Enqueue(p);
                         return;
                     }
+                    
+                    if (Info.Equipment[to] != null &&
+                        Info.Equipment[to].Info.Bind.HasFlag(BindMode.DontStore))
+                    {
+                        Enqueue(p);
+                        return;
+                    }
                     array = Account.Storage;
                     break;
                 default:
@@ -10276,7 +10758,38 @@ namespace Server.MirObjects
 
                 Item.Slots[to] = temp;
                 array[index] = null;
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        ctx.UserItems.Attach(Item);
+                        ctx.Entry(Item).State = EntityState.Modified;
+                        ctx.SaveChanges();
+                        switch (grid)
+                        {
+                            case MirGridType.Inventory:
+                                var dbIvt =
+                                    ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(index).FirstOrDefault();
+                                if (dbIvt != null)
+                                {
+                                    dbIvt.ItemUniqueID = null;
+                                    ctx.SaveChanges();
+                                }
+                                break;
+                            case MirGridType.Storage:
+                                var dbStrg =
+                                    ctx.StorageItems.Where(strg => strg.AccountIndex == Account.Index).OrderBy(strg => strg.id).Skip(index)
+                                        .FirstOrDefault();
+                                if (dbStrg != null)
+                                {
+                                    dbStrg.UserItemUniqueID = null;
+                                    ctx.SaveChanges();
+                                }
+                                break;
+                        }
 
+                    }
+                }
                 p.Success = true;
                 Enqueue(p);
                 RefreshStats();
@@ -10364,6 +10877,38 @@ namespace Server.MirObjects
                 Info.Equipment[index] = null;
 
                 array[to] = temp;
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        var dbEq = ctx.Equipments.Where(eq => eq.CharacterIndex == Info.Index).OrderBy(eq => eq.id).Skip(index).FirstOrDefault();
+                        if (dbEq != null)
+                        {
+                            dbEq.ItemUniqueID = null;
+                        }
+                        
+                        switch (grid)
+                        {
+                            case MirGridType.Inventory:
+                                var dbIvt =
+                                    ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(to).FirstOrDefault();
+                                if (dbIvt != null)
+                                {
+                                    dbIvt.ItemUniqueID = temp.UniqueID;
+                                }
+                                break;
+                            case MirGridType.Storage:
+                                var dbStrg =
+                                    ctx.StorageItems.Where(strg => strg.AccountIndex == Account.Index).OrderBy(strg => strg.id).Skip(to).FirstOrDefault();
+                                if (dbStrg != null)
+                                {
+                                    dbStrg.UserItemUniqueID = temp.UniqueID;
+                                }
+                                break;
+                        }
+                        ctx.SaveChanges();
+                    }
+                }
                 p.Success = true;
                 Enqueue(p);
                 RefreshStats();
@@ -10478,6 +11023,34 @@ namespace Server.MirObjects
             if (array[to] == null)
             {
                 array[to] = slotTemp;
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        ctx.UserItems.Attach(temp);
+                        ctx.Entry(temp).State = EntityState.Modified;
+                        switch (gridTo)
+                        {
+                            case MirGridType.Inventory:
+                                var dbIvt =
+                                    ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(to).FirstOrDefault();
+                                if (dbIvt != null)
+                                {
+                                    dbIvt.ItemUniqueID = slotTemp.UniqueID;
+                                }
+                                break;
+                            case MirGridType.Storage:
+                                var dbStrg =
+                                    ctx.StorageItems.Where(strg => strg.AccountIndex == Account.Index).OrderBy(strg => strg.id).Skip(to).FirstOrDefault();
+                                if (dbStrg != null)
+                                {
+                                    dbStrg.UserItemUniqueID = slotTemp.UniqueID;
+                                }
+                                break;
+                        }
+                        ctx.SaveChanges();
+                    }
+                }
                 p.Success = true;
                 Enqueue(p);
                 RefreshStats();
@@ -10550,7 +11123,56 @@ namespace Server.MirObjects
                 array[from] = i;
 
                 Report.ItemMoved("MoveItem", array[from], grid, grid, to, from);
-                
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        switch (grid)
+                        {
+                            case MirGridType.Inventory:
+                                var dbIvtCount = ctx.Inventories.Count(ivt => ivt.CharacterIndex == Info.Index);
+                                if (dbIvtCount < array.Length)
+                                {
+                                    for (var _i = 0; _i < array.Length - dbIvtCount; _i++)
+                                    {
+                                        ctx.Inventories.Add(new InventoryItem() { CharacterIndex = Info.Index });
+                                    }
+                                    ctx.SaveChanges();
+                                }
+                                var dbiFrom = ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(from).Take(1).FirstOrDefault();
+                                var dbiTo = ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(to).Take(1).FirstOrDefault();
+                                if (dbiFrom != null && dbiTo != null)
+                                {
+                                    var temp = dbiFrom.ItemUniqueID;
+                                    dbiFrom.ItemUniqueID = dbiTo.ItemUniqueID;
+                                    dbiTo.ItemUniqueID = temp;
+                                    ctx.SaveChanges();
+                                }
+                                break;
+                            case MirGridType.Storage:
+                                var dbStrgCount = ctx.Inventories.Count(ivt => ivt.CharacterIndex == Info.Index);
+                                if (dbStrgCount < array.Length)
+                                {
+                                    for (var _i = 0; _i < array.Length - dbStrgCount; _i++)
+                                    {
+                                        ctx.Inventories.Add(new InventoryItem() { CharacterIndex = Info.Index });
+                                    }
+                                    ctx.SaveChanges();
+                                }
+                                var dbsFrom = ctx.StorageItems.OrderBy(strg => strg.id).Where(strg => strg.AccountIndex == Info.AccountInfoIndex).Skip(from).Take(1).FirstOrDefault();
+                                var dbsTo = ctx.StorageItems.OrderBy(strg => strg.id).Where(strg => strg.AccountIndex == Info.AccountInfoIndex).Skip(to).Take(1).FirstOrDefault();
+                                if (dbsFrom != null && dbsTo != null)
+                                {
+                                    var temp = dbsFrom.UserItemUniqueID;
+                                    dbsFrom.UserItemUniqueID = dbsTo.UserItemUniqueID;
+                                    dbsTo.UserItemUniqueID = temp;
+                                    ctx.SaveChanges();
+                                }
+                                break;
+                        }
+                        
+                    }
+                }
                 p.Success = true;
                 Enqueue(p);
                 return;
@@ -10608,6 +11230,12 @@ namespace Server.MirObjects
                 return;
             }
 
+            if (temp.RentalInformation != null && temp.RentalInformation.BindingFlags.HasFlag(BindMode.DontStore))
+            {
+                Enqueue(p);
+                return;
+            }
+
             if (Account.Storage[to] == null)
             {
                 Account.Storage[to] = temp;
@@ -10615,7 +11243,38 @@ namespace Server.MirObjects
                 RefreshBagWeight();
 
                 Report.ItemMoved("StoreItem", temp, MirGridType.Inventory, MirGridType.Storage, from, to);
-
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        var dbIvtCount = ctx.Inventories.Count(ivt => ivt.CharacterIndex == Info.Index);
+                        if (dbIvtCount < Info.Inventory.Length)
+                        {
+                            for (var _i = 0; _i < Info.Inventory.Length - dbIvtCount; _i++)
+                            {
+                                ctx.Inventories.Add(new InventoryItem() { CharacterIndex = Info.Index });
+                            }
+                            ctx.SaveChanges();
+                        }
+                        var dbStrgCount = ctx.StorageItems.Count(strg => strg.AccountIndex == Info.AccountInfoIndex);
+                        if (dbStrgCount < Account.Storage.Length)
+                        {
+                            for (var _i = 0; _i < Account.Storage.Length - dbStrgCount; _i++)
+                            {
+                                ctx.StorageItems.Add(new StorageItem() { AccountIndex = Info.AccountInfoIndex });
+                            }
+                            ctx.SaveChanges();
+                        }
+                        var dbFrom = ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(from).Take(1).FirstOrDefault();
+                        var dbTo = ctx.StorageItems.OrderBy(strg => strg.id).Where(strg => strg.AccountIndex == Info.AccountInfoIndex).Skip(to).Take(1).FirstOrDefault();
+                        if (dbFrom != null && dbTo != null)
+                        {
+                            dbTo.UserItemUniqueID = dbFrom.ItemUniqueID;
+                            dbFrom.ItemUniqueID = null;
+                            ctx.SaveChanges();
+                        }
+                    }
+                }
                 p.Success = true;
                 Enqueue(p);
                 return;
@@ -10679,7 +11338,24 @@ namespace Server.MirObjects
                 Account.Storage[from] = null;
 
                 Report.ItemMoved("TakeBackStoreItem", temp, MirGridType.Storage, MirGridType.Inventory, from, to);
-
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        var dbivt =
+                            ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(to).Take(1).FirstOrDefault();
+                        var dbStrg =
+                            ctx.StorageItems.Where(strg => strg.AccountIndex == Account.Index).OrderBy(strg => strg.id).Skip(from)
+                                .Take(1)
+                                .FirstOrDefault();
+                        if (dbivt != null && dbStrg != null)
+                        {
+                            dbivt.ItemUniqueID = dbStrg.UserItemUniqueID;
+                            dbStrg.UserItemUniqueID = null;
+                            ctx.SaveChanges();
+                        }
+                    }
+                }
                 p.Success = true;
                 RefreshBagWeight();
                 Enqueue(p);
@@ -10753,6 +11429,13 @@ namespace Server.MirObjects
                 Enqueue(p);
                 return;
             }
+            if (temp.Info == null)
+            {
+                using (var ctx = new DataContext())
+                {
+                    temp.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == temp.ItemIndex);
+                }
+            }
             if ((Info.Equipment[to] != null) && (Info.Equipment[to].Cursed) && (!UnlockCurse))
             {
                 Enqueue(p);
@@ -10796,7 +11479,42 @@ namespace Server.MirObjects
                 Info.Equipment[to] = temp;
 
                 Report.ItemMoved("EquipItem", temp, grid, MirGridType.Equipment, index, to);
-
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        switch (grid)
+                        {
+                            case MirGridType.Inventory:
+                                var dbIvt =
+                                    ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(index)
+                                        .FirstOrDefault();
+                                if (dbIvt != null)
+                                {
+                                    dbIvt.ItemUniqueID = array[index]?.UniqueID;
+                                    ctx.SaveChanges();
+                                }
+                                
+                                break;
+                            case MirGridType.Storage:
+                                var dbStrg =
+                                    ctx.StorageItems.Where(strg => strg.AccountIndex == Account.Index).OrderBy(strg => strg.id).Skip(index)
+                                        .FirstOrDefault();
+                                if (dbStrg != null)
+                                {
+                                    dbStrg.UserItemUniqueID = array[index]?.UniqueID;
+                                    ctx.SaveChanges();
+                                }
+                                break;
+                        }
+                        var dbEq = ctx.Equipments.Where(eq => eq.CharacterIndex == Info.Index).OrderBy(eq => eq.id).Skip(to).FirstOrDefault();
+                        if (dbEq != null)
+                        {
+                            dbEq.ItemUniqueID = Info.Equipment[to]?.UniqueID;
+                            ctx.SaveChanges();
+                        }
+                    }
+                }
                 p.Success = true;
                 Enqueue(p);
                 RefreshStats();
@@ -10826,7 +11544,13 @@ namespace Server.MirObjects
                 Enqueue(p);
                 return;
             }
-
+            if (item.Info == null)
+            {
+                using (var ctx = new DataContext())
+                {
+                    item.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == item.ItemIndex);
+                }
+            }
             if (Dead && !(item.Info.Type == ItemType.Scroll && item.Info.Shape == 6))
             {
                 Enqueue(p);
@@ -10849,11 +11573,11 @@ namespace Server.MirObjects
                         case 2: //MysteryWater
                             if (UnlockCurse)
                             {
-                                ReceiveChat("You can already unequip a cursed item.", ChatType.Hint);
+                                ReceiveChat("你已经可以脱下诅咒的装备了.", ChatType.Hint);
                                 Enqueue(p);
                                 return;
                             }
-                            ReceiveChat("You can now unequip a cursed item.", ChatType.Hint);
+                            ReceiveChat("你现在可以脱下诅咒的装备了.", ChatType.Hint);
                             UnlockCurse = true;
                             break;
                         case 3: //Buff
@@ -10923,7 +11647,7 @@ namespace Server.MirObjects
                             }
                             break;
                         case 4: //RepairOil
-                            temp = Info.Equipment[(int)EquipmentSlot.Weapon];
+                            temp = Info.Equipment[(int) EquipmentSlot.Weapon];
                             if (temp == null || temp.MaxDura == temp.CurrentDura)
                             {
                                 Enqueue(p);
@@ -10934,31 +11658,61 @@ namespace Server.MirObjects
                                 Enqueue(p);
                                 return;
                             }
-                            temp.MaxDura = (ushort)Math.Max(0, temp.MaxDura - Math.Min(5000, temp.MaxDura - temp.CurrentDura) / 30);
+                            temp.MaxDura =
+                                (ushort) Math.Max(0,
+                                    temp.MaxDura - Math.Min(5000, temp.MaxDura - temp.CurrentDura) / 30);
 
-                            temp.CurrentDura = (ushort)Math.Min(temp.MaxDura, temp.CurrentDura + 5000);
+                            temp.CurrentDura = (ushort) Math.Min(temp.MaxDura, temp.CurrentDura + 5000);
                             temp.DuraChanged = false;
-
+                            if (Settings.UseSQLServer)
+                            {
+                                using (var ctx = new DataContext())
+                                {
+                                    ctx.UserItems.Attach(temp);
+                                    ctx.Entry(temp).State = EntityState.Modified;
+                                    ctx.SaveChanges();
+                                }
+                            }
                             ReceiveChat("Your weapon has been partially repaired", ChatType.Hint);
-                            Enqueue(new S.ItemRepaired { UniqueID = temp.UniqueID, MaxDura = temp.MaxDura, CurrentDura = temp.CurrentDura });
+                            Enqueue(new S.ItemRepaired
+                            {
+                                UniqueID = temp.UniqueID,
+                                MaxDura = temp.MaxDura,
+                                CurrentDura = temp.CurrentDura
+                            });
                             break;
                         case 5: //WarGodOil
-                            temp = Info.Equipment[(int)EquipmentSlot.Weapon];
+                            temp = Info.Equipment[(int) EquipmentSlot.Weapon];
                             if (temp == null || temp.MaxDura == temp.CurrentDura)
                             {
                                 Enqueue(p);
                                 return;
                             }
-                            if (temp.Info.Bind.HasFlag(BindMode.DontRepair) || (temp.Info.Bind.HasFlag(BindMode.NoSRepair)))
+                            if (temp.Info.Bind.HasFlag(BindMode.DontRepair) ||
+                                (temp.Info.Bind.HasFlag(BindMode.NoSRepair)))
                             {
                                 Enqueue(p);
                                 return;
                             }
                             temp.CurrentDura = temp.MaxDura;
                             temp.DuraChanged = false;
+                            if (Settings.UseSQLServer)
+                            {
+                                using (var ctx = new DataContext())
+                                {
+                                    ctx.UserItems.Attach(temp);
+                                    ctx.Entry(temp).State = EntityState.Modified;
+                                    ctx.SaveChanges();
+                                }
+                            }
 
-                            ReceiveChat("Your weapon has been completely repaired", ChatType.Hint);
-                            Enqueue(new S.ItemRepaired { UniqueID = temp.UniqueID, MaxDura = temp.MaxDura, CurrentDura = temp.CurrentDura });
+                            ReceiveChat("你的武器已经完好如新了", ChatType.Hint);
+                            Enqueue(new S.ItemRepaired
+                            {
+                                UniqueID = temp.UniqueID,
+                                MaxDura = temp.MaxDura,
+                                CurrentDura = temp.CurrentDura
+                            });
                             break;
                         case 6: //ResurrectionScroll
                             if (Dead)
@@ -10971,25 +11725,60 @@ namespace Server.MirObjects
                             if (item.Info.Price > 0)
                             {
                                 GainCredit(item.Info.Price);
-                                ReceiveChat(String.Format("{0} Credits have been added to your Account", item.Info.Price), ChatType.Hint);
+                                ReceiveChat(String.Format("{0} 点数加到账号", item.Info.Price), ChatType.Hint);
                             }
                             break;
                         case 8: //MapShoutScroll
                             HasMapShout = true;
-                            ReceiveChat("You have been given one free shout across your current map", ChatType.Hint);
+                            ReceiveChat("你可以在当前地图喊一句话了", ChatType.Hint);
                             break;
-                        case 9://ServerShoutScroll
+                        case 9: //ServerShoutScroll
                             HasServerShout = true;
-                            ReceiveChat("You have been given one free shout across the server", ChatType.Hint);
+                            ReceiveChat("你可以在整个服务器喊一句话了", ChatType.Hint);
                             break;
-                        case 10://GuildSkillScroll
+                        case 10: //GuildSkillScroll
                             MyGuild.NewBuff(item.Info.Effect, false);
                             break;
-                        case 11://HomeTeleport
-                            if (MyGuild != null && MyGuild.Conquest != null && !MyGuild.Conquest.WarIsOn && MyGuild.Conquest.PalaceMap != null && !TeleportRandom(200, 0, MyGuild.Conquest.PalaceMap))
+                        case 11: //HomeTeleport
+                            if (MyGuild != null && MyGuild.Conquest != null && !MyGuild.Conquest.WarIsOn &&
+                                MyGuild.Conquest.PalaceMap != null &&
+                                !TeleportRandom(200, 0, MyGuild.Conquest.PalaceMap))
                             {
                                 Enqueue(p);
                                 return;
+                            }
+                            break;
+                        case 12: //LotteryTicket
+                            foreach (DropInfo drop in Envir.LotteryTicketDrops)
+                            {
+                                int rate = (int) (drop.Chance / (Settings.DropRate));
+
+                                if (rate < 1) rate = 1;
+
+                                if (Envir.Random.Next(rate) != 0) continue;
+
+                                if (drop.Gold > 0)
+                                {
+                                    int lowerGoldRange = (int) (drop.Gold / 2);
+                                    int upperGoldRange = (int) (drop.Gold + drop.Gold / 2);
+
+                                    if (lowerGoldRange > upperGoldRange) lowerGoldRange = upperGoldRange;
+
+                                    int gold = Envir.Random.Next(lowerGoldRange, upperGoldRange);
+
+                                    if (gold <= 0) continue;
+
+                                    GainGold((uint) gold);
+                                    break;
+                                }
+                                UserItem _item = Envir.CreateDropItem(drop.Item);
+                                if (_item == null) continue;
+
+                                if (drop.QuestRequired) continue;
+
+                                if (_item.Count < 1) _item.Count = 1;
+                                GainItem(_item);
+                                break;
                             }
                             break;
                     }
@@ -11002,7 +11791,15 @@ namespace Server.MirObjects
                         Enqueue(p);
                         return;
                     }
-
+                    magic.CharacterIndex = Info.Index;
+                    if (Settings.UseSQLServer)
+                    {
+                        using (var ctx = new DataContext())
+                        {
+                            ctx.UserMagics.Add(magic);
+                            ctx.SaveChanges();
+                        }
+                    }
                     Info.Magics.Add(magic);
                     Enqueue(magic.GetInfo());
                     RefreshStats();
@@ -11029,7 +11826,15 @@ namespace Server.MirObjects
 
                     temp.CurrentDura = (ushort)Math.Min(temp.MaxDura, temp.CurrentDura + item.CurrentDura);
                     temp.DuraChanged = false;
-
+                    if (Settings.UseSQLServer)
+                    {
+                        using (var ctx = new DataContext())
+                        {
+                            ctx.UserItems.Attach(temp);
+                            ctx.Entry(temp).State = EntityState.Modified;
+                            ctx.SaveChanges();
+                        }
+                    }
                     ReceiveChat("Your mount has been fed.", ChatType.Hint);
                     Enqueue(new S.ItemRepaired { UniqueID = temp.UniqueID, MaxDura = temp.MaxDura, CurrentDura = temp.CurrentDura });
 
@@ -11046,6 +11851,31 @@ namespace Server.MirObjects
                             case 21://BlackStone
                                 if (item.Count > 1) item.Count--;
                                 else Info.Inventory[index] = null;
+                                if (Settings.UseSQLServer)
+                                {
+                                    using (var ctx = new DataContext())
+                                    {
+                                        if (Info.Inventory[index] == null)
+                                        {
+                                            var dbIvt =
+                                                ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(index)
+                                                    .FirstOrDefault();
+                                            if (dbIvt != null)
+                                            {
+                                                dbIvt.ItemUniqueID = null;
+                                                ctx.UserItems.Attach(item);
+                                                ctx.Entry(item).State = EntityState.Deleted;
+                                                ctx.SaveChanges();
+                                            }
+                                        }
+                                        else
+                                        {
+                                            ctx.UserItems.Attach(item);
+                                            ctx.Entry(item).State = EntityState.Modified;
+                                            ctx.SaveChanges();
+                                        }
+                                    }
+                                }
                                 RefreshBagWeight();
                                 p.Success = true;
                                 Enqueue(p);
@@ -11088,6 +11918,31 @@ namespace Server.MirObjects
                                 byte boxtype = item.Info.Effect;
                                 if (item.Count > 1) item.Count--;
                                 else Info.Inventory[index] = null;
+                                if (Settings.UseSQLServer)
+                                {
+                                    using (var ctx = new DataContext())
+                                    {
+                                        if (Info.Inventory[index] == null)
+                                        {
+                                            var dbIvt =
+                                                ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(index)
+                                                    .FirstOrDefault();
+                                            if (dbIvt != null)
+                                            {
+                                                dbIvt.ItemUniqueID = null;
+                                                ctx.UserItems.Attach(item);
+                                                ctx.Entry(item).State = EntityState.Deleted;
+                                                ctx.SaveChanges();
+                                            }
+                                        }
+                                        else
+                                        {
+                                            ctx.UserItems.Attach(item);
+                                            ctx.Entry(item).State = EntityState.Modified;
+                                            ctx.SaveChanges();
+                                        }
+                                    }
+                                }
                                 RefreshBagWeight();
                                 p.Success = true;
                                 Enqueue(p);
@@ -11143,7 +11998,16 @@ namespace Server.MirObjects
                             Enqueue(p);
                             return;
                         }
-
+                        petInfo.CharacterIndex = Info.Index;
+                        if (Settings.UseSQLServer)
+                        {
+                            using (var ctx = new DataContext())
+                            {
+                                ctx.UserIntelligentCreatures.Attach(petInfo);
+                                ctx.Entry(petInfo).State = EntityState.Added;
+                                ctx.SaveChanges();
+                            }
+                        }
                         ReceiveChat("Obtained a new creature {" + petInfo.CustomName + "}.", ChatType.Hint);
 
                         Info.IntelligentCreatures.Add(petInfo);
@@ -11162,6 +12026,27 @@ namespace Server.MirObjects
 
             if (item.Count > 1) item.Count--;
             else Info.Inventory[index] = null;
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.UserItems.Attach(item);
+                    if (Info.Inventory[index] != null)
+                    {
+                        ctx.Entry(item).State = EntityState.Modified;
+                    }
+                    else
+                    {
+                        ctx.Entry(item).State = EntityState.Deleted;
+                        var dbIvt = ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(index).FirstOrDefault();
+                        if (dbIvt != null)
+                        {
+                            dbIvt.ItemUniqueID = null;
+                        }
+                    }
+                    ctx.SaveChanges();
+                }
+            }
             RefreshBagWeight();
 
             Report.ItemChanged("UseItem", item, 1, 1);
@@ -11221,17 +12106,33 @@ namespace Server.MirObjects
             }
 
             temp.Count -= count;
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.UserItems.Attach(temp);
+                    ctx.Entry(temp).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             temp = Envir.CreateFreshItem(temp.Info);
             temp.Count = count;
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.UserItems.Attach(temp);
+                    ctx.Entry(temp).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             p.Success = true;
             Enqueue(p);
             Enqueue(new S.SplitItem { Item = temp, Grid = grid });
 
             if (grid == MirGridType.Inventory && (temp.Info.Type == ItemType.Potion || temp.Info.Type == ItemType.Scroll || temp.Info.Type == ItemType.Amulet || (temp.Info.Type == ItemType.Script && temp.Info.Effect == 1)))
             {
-                if (temp.Info.Type == ItemType.Potion || temp.Info.Type == ItemType.Scroll || (temp.Info.Type == ItemType.Script && temp.Info.Effect == 1))
+                if (temp.Info.Type == ItemType.Potion || temp.Info.Type == ItemType.Scroll|| (temp.Info.Type == ItemType.Script && temp.Info.Effect == 1))
                 {
                     for (int i = 0; i < 4; i++)
                     {
@@ -11257,6 +12158,18 @@ namespace Server.MirObjects
             {
                 if (array[i] != null) continue;
                 array[i] = temp;
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        var dbIvt = ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(i).FirstOrDefault();
+                        if (dbIvt != null)
+                        {
+                            dbIvt.ItemUniqueID = temp.UniqueID;
+                        }
+                        ctx.SaveChanges();
+                    }
+                }
                 RefreshBagWeight();
                 return;
             }
@@ -11265,6 +12178,18 @@ namespace Server.MirObjects
             {
                 if (array[i] != null) continue;
                 array[i] = temp;
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        var dbIvt = ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(i).FirstOrDefault();
+                        if (dbIvt != null)
+                        {
+                            dbIvt.ItemUniqueID = temp.UniqueID;
+                        }
+                        ctx.SaveChanges();
+                    }
+                }
                 RefreshBagWeight();
                 return;
             }
@@ -11371,7 +12296,13 @@ namespace Server.MirObjects
                 tempFrom = arrayFrom[i];
                 break;
             }
-
+            if (tempFrom != null && tempFrom.Info == null)
+            {
+                using (var ctx = new DataContext())
+                {
+                    tempFrom.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == tempFrom.ItemIndex);
+                }
+            }
             if (tempFrom == null || tempFrom.Info.StackSize == 1 || index == -1)
             {
                 Enqueue(p);
@@ -11380,14 +12311,20 @@ namespace Server.MirObjects
 
 
             UserItem tempTo = null;
-
+            
             for (int i = 0; i < arrayTo.Length; i++)
             {
                 if (arrayTo[i] == null || arrayTo[i].UniqueID != toID) continue;
                 tempTo = arrayTo[i];
                 break;
             }
-
+            if (tempTo != null && tempTo.Info == null)
+            {
+                using (var ctx = new DataContext())
+                {
+                    tempTo.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == tempTo.ItemIndex);
+                }
+            }
             if (tempTo == null || tempTo.Info != tempFrom.Info || tempTo.Count == tempTo.Info.StackSize)
             {
                 Enqueue(p);
@@ -11416,6 +12353,81 @@ namespace Server.MirObjects
                 tempFrom.Count -= tempTo.Info.StackSize - tempTo.Count;
                 tempTo.Count = tempTo.Info.StackSize;
             }
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    switch (gridFrom)
+                    {
+                        case MirGridType.Inventory:
+                            if (arrayFrom[index] == null)
+                            {
+                                ctx.Inventories.RemoveRange(
+                                    ctx.Inventories.Where(ivt => ivt.ItemUniqueID == tempFrom.UniqueID));
+                                ctx.UserItems.Attach(tempFrom);
+                                ctx.Entry(tempFrom).State = EntityState.Deleted;
+                                ctx.SaveChanges();
+                            }
+                            else
+                            {
+                                ctx.UserItems.Attach(tempFrom);
+                                ctx.Entry(tempFrom).State = EntityState.Modified;
+                                ctx.SaveChanges();
+                            }
+                            break;
+                        case MirGridType.Equipment:
+                            if (arrayFrom[index] == null)
+                            {
+                                ctx.Equipments.RemoveRange(
+                                    ctx.Equipments.Where(eq => eq.ItemUniqueID == tempFrom.UniqueID));
+                                ctx.UserItems.Attach(tempFrom);
+                                ctx.Entry(tempFrom).State = EntityState.Deleted;
+                                ctx.SaveChanges();
+                            }
+                            else
+                            {
+                                ctx.UserItems.Attach(tempFrom);
+                                ctx.Entry(tempFrom).State = EntityState.Modified;
+                                ctx.SaveChanges();
+                            }
+                            break;
+                        case MirGridType.Fishing:
+                            if (arrayFrom[index] == null)
+                            {
+                                ctx.UserItems.Attach(tempFrom);
+                                ctx.Entry(tempFrom).State = EntityState.Deleted;
+                                ctx.SaveChanges();
+                            }
+                            else
+                            {
+                                ctx.UserItems.Attach(tempFrom);
+                                ctx.Entry(tempFrom).State = EntityState.Modified;
+                                ctx.SaveChanges();
+                            }
+                            break;
+                        case MirGridType.Storage:
+                            if (arrayFrom[index] == null)
+                            {
+                                ctx.StorageItems.RemoveRange(
+                                    ctx.StorageItems.Where(strg => strg.UserItemUniqueID == tempFrom.UniqueID));
+                                ctx.UserItems.Attach(tempFrom);
+                                ctx.Entry(tempFrom).State = EntityState.Deleted;
+                                ctx.SaveChanges();
+                            }
+                            else
+                            {
+                                ctx.UserItems.Attach(tempFrom);
+                                ctx.Entry(tempFrom).State = EntityState.Modified;
+                                ctx.SaveChanges();
+                            }
+                            break;
+                    }
+                    ctx.UserItems.Attach(tempTo);
+                    ctx.Entry(tempTo).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
+            
 
             TradeUnlock();
 
@@ -11531,6 +12543,12 @@ namespace Server.MirObjects
                 case 3: //gems
                 case 4: //orbs
                     if (tempTo.Info.Bind.HasFlag(BindMode.DontUpgrade) || tempTo.Info.Unique != SpecialItemMode.None)
+                    {
+                        Enqueue(p);
+                        return;
+                    }
+
+                    if (tempTo.RentalInformation != null && tempTo.RentalInformation.BindingFlags.HasFlag(BindMode.DontUpgrade))
                     {
                         Enqueue(p);
                         return;
@@ -11803,7 +12821,31 @@ namespace Server.MirObjects
 
             if (tempFrom.Count > 1) tempFrom.Count--;
             else Info.Inventory[indexFrom] = null;
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.UserItems.Attach(tempTo);
+                    ctx.UserItems.Attach(tempFrom);
+                    ctx.Entry(tempTo).State = EntityState.Modified;
+                    if (Info.Inventory[indexFrom] == null)
+                    {
+                        ctx.Entry(tempFrom).State = EntityState.Deleted;
+                        var dbIvt =
+                            ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(indexFrom).FirstOrDefault();
+                        if (dbIvt != null)
+                        {
+                            dbIvt.ItemUniqueID = null;
+                        }
+                        ctx.SaveChanges();
+                    }
+                    else
+                    {
+                        ctx.Entry(tempFrom).State = EntityState.Modified;
+                        ctx.SaveChanges();
+                    }
+                }
+            }
             Report.ItemCombined("CombineItem", tempFrom, tempTo, indexFrom, indexTo, MirGridType.Inventory);
 
             //item merged ok
@@ -12061,6 +13103,12 @@ namespace Server.MirObjects
                 return;
             }
 
+            if (temp.RentalInformation != null && temp.RentalInformation.BindingFlags.HasFlag(BindMode.DontDrop))
+            {
+                Enqueue(p);
+                return;
+            }
+
             if (temp.Count == count)
             {
                 if (!temp.Info.Bind.HasFlag(BindMode.DestroyOnDrop))
@@ -12083,6 +13131,29 @@ namespace Server.MirObjects
                     }
                 temp.Count -= count;
             }
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    if (Info.Inventory[index] == null)
+                    {
+                        var dbIvt = ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(index).FirstOrDefault();
+                        if (dbIvt != null)
+                        {
+                            dbIvt.ItemUniqueID = null;
+                        }
+                        ctx.UserItems.Attach(temp);
+                        ctx.Entry(temp).State = EntityState.Deleted;
+                        ctx.SaveChanges();
+                    }
+                    else
+                    {
+                        ctx.UserItems.Attach(temp);
+                        ctx.Entry(temp).State = EntityState.Modified;
+                        ctx.SaveChanges();
+                    }
+                }
+            }
             p.Success = true;
             Enqueue(p);
             RefreshBagWeight();
@@ -12097,6 +13168,15 @@ namespace Server.MirObjects
 
             if (!ob.Drop(5)) return;
             Account.Gold -= gold;
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.AccountInfos.Attach(Account);
+                    ctx.Entry(Account).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             Enqueue(new S.LoseGold { Gold = gold });
         }
         public void PickUp()
@@ -12126,6 +13206,13 @@ namespace Server.MirObjects
 
                 if (item.Item != null)
                 {
+                    if (item.Item.Info == null)
+                    {
+                        using (var ctx = new DataContext())
+                        {
+                            item.Item.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == item.Item.ItemIndex);
+                        }
+                    }
                     if (!CanGainItem(item.Item)) continue;
 
                     if (item.Item.Info.ShowGroupPickup && IsGroupMember(this))
@@ -12205,7 +13292,15 @@ namespace Server.MirObjects
                 gold = uint.MaxValue - Account.Gold;
 
             Account.Gold += gold;
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.AccountInfos.Attach(Account);
+                    ctx.Entry(Account).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             Enqueue(new S.GainedGold { Gold = gold });
         }
         public void GainCredit(uint credit)
@@ -12216,7 +13311,15 @@ namespace Server.MirObjects
                 credit = uint.MaxValue - Account.Credit;
 
             Account.Credit += credit;
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.AccountInfos.Attach(Account);
+                    ctx.Entry(Account).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             Enqueue(new S.GainedCredit { Credit = credit });
         }
 
@@ -12324,6 +13427,9 @@ namespace Server.MirObjects
                 case 1:
                     message = "Could not return item to bag after trade.";
                     break;
+                case 2:
+                    message = "Your loaned item has been returned.";
+                    break;
                 default:
                     message = "No reason provided.";
                     break;
@@ -12355,7 +13461,13 @@ namespace Server.MirObjects
         private bool CanUseItem(UserItem item)
         {
             if (item == null) return false;
-
+            if (item.Info == null)
+            {
+                using (var ctx = new DataContext())
+                {
+                    item.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == item.ItemIndex);
+                }
+            }
             switch (Gender)
             {
                 case MirGender.Male:
@@ -12626,6 +13738,13 @@ namespace Server.MirObjects
         }
         private bool CanEquipItem(UserItem item, int slot)
         {
+            if (item.Info == null)
+            {
+                using (var ctx = new DataContext())
+                {
+                    item.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == item.ItemIndex);
+                }
+            }
             switch ((EquipmentSlot)slot)
             {
                 case EquipmentSlot.Weapon:
@@ -12749,12 +13868,34 @@ namespace Server.MirObjects
 
             if (item.Info.Type == ItemType.Weapon || item.Info.Type == ItemType.Torch)
             {
-                if (item.Weight - (Info.Equipment[slot] != null ? Info.Equipment[slot].Weight : 0) + CurrentHandWeight > MaxHandWeight)
+                if (Info.Equipment[slot] != null && Info.Equipment[slot].Info == null)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        var itemIndex = Info.Equipment[slot].ItemIndex;
+                        Info.Equipment[slot].Info =
+                            ctx.ItemInfos.FirstOrDefault(info => info.Index == itemIndex);
+                    }
+                }
+                if (item.Weight - (Info.Equipment[slot] != null ? Info.Equipment[slot].Weight : 0) + CurrentHandWeight >
+                    MaxHandWeight)
                     return false;
             }
             else
+            {
+                if (Info.Equipment[slot] != null && Info.Equipment[slot].Info == null)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        var itemIndex = Info.Equipment[slot].ItemIndex;
+                        Info.Equipment[slot].Info =
+                            ctx.ItemInfos.FirstOrDefault(info => info.Index == itemIndex);
+                    }
+                }
                 if (item.Weight - (Info.Equipment[slot] != null ? Info.Equipment[slot].Weight : 0) + CurrentWearWeight > MaxWearWeight)
                     return false;
+            }
+                
 
             if (RidingMount && item.Info.Type != ItemType.Torch)
             {
@@ -12880,6 +14021,13 @@ namespace Server.MirObjects
         }
         private void DamageItem(UserItem item, int amount, bool isChanged = false)
         {
+            if (item != null && item.Info == null)
+            {
+                using (var ctx = new DataContext())
+                {
+                    item.Info = ctx.ItemInfos.FirstOrDefault(i => i.Index == item.ItemIndex);
+                }
+            }
             if (item == null || item.CurrentDura == 0 || item.Info.Type == ItemType.Amulet) return;
             if ((item.WeddingRing == Info.Married) && (Info.Equipment[(int)EquipmentSlot.RingL].UniqueID == item.UniqueID)) return;
             if (item.Info.Strong > 0) amount = Math.Max(1, amount - item.Info.Strong);
@@ -12888,7 +14036,15 @@ namespace Server.MirObjects
 
             if (item.CurrentDura > 0 && isChanged != true) return;
             Enqueue(new S.DuraChanged { UniqueID = item.UniqueID, CurrentDura = item.CurrentDura });
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.UserItems.Attach(item);
+                    ctx.Entry(item).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             item.DuraChanged = false;
             RefreshStats();
         }
@@ -12927,11 +14083,19 @@ namespace Server.MirObjects
             //Item not found
         }
 
-        public bool TryLuckWeapon()
+        private bool TryLuckWeapon()
         {
-            UserItem item = Info.Equipment[(int)EquipmentSlot.Weapon];
+            var item = Info.Equipment[(int)EquipmentSlot.Weapon];
 
-            if (item == null || item.Luck >= 7) return false;
+            if (item == null || item.Luck >= 7)
+                return false;
+
+            var luckChanged = true;
+            if (item.Info.Bind.HasFlag(BindMode.DontUpgrade))
+                return false;
+
+            if (item.RentalInformation != null && item.RentalInformation.BindingFlags.HasFlag(BindMode.DontUpgrade))
+                return false;
 
             if (item.Luck > (Settings.MaxLuck * -1) && Envir.Random.Next(20) == 0)
             {
@@ -12950,8 +14114,17 @@ namespace Server.MirObjects
             else
             {
                 ReceiveChat("No effect.", ChatType.Hint);
+                luckChanged = false;
             }
-
+            if (luckChanged && Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.UserItems.Attach(item);
+                    ctx.Entry(item).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             return true;
         }
 
@@ -13736,6 +14909,15 @@ namespace Server.MirObjects
                     }
                     break;
             }
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(Info);
+                    ctx.Entry(Info).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
         }
 
         private void UpdateGMBuff()
@@ -13934,6 +15116,12 @@ namespace Server.MirObjects
                     return;
                 }
 
+                if (temp.RentalInformation != null && temp.RentalInformation.BindingFlags.HasFlag(BindMode.DontSell))
+                {
+                    Enqueue(p);
+                    return;
+                }
+
                 if (ob.Types.Count != 0 && !ob.Types.Contains(temp.Info.Type))
                 {
                     ReceiveChat("You cannot sell this item here.", ChatType.System);
@@ -13956,7 +15144,30 @@ namespace Server.MirObjects
                     temp = item;
                 }
                 else Info.Inventory[index] = null;
-
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        if (Info.Inventory[index] == null)
+                        {
+                            var dbIvt =
+                                ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(index).FirstOrDefault();
+                            if (dbIvt != null)
+                            {
+                                dbIvt.ItemUniqueID = null;
+                            }
+                            ctx.UserItems.Attach(temp);
+                            ctx.Entry(temp).State = EntityState.Deleted;
+                        }
+                        else
+                        {
+                            ctx.UserItems.Attach(temp);
+                            ctx.Entry(temp).State = EntityState.Modified;
+                        }
+                        ctx.SaveChanges();
+                    }
+                    
+                }
                 ob.Sell(this, temp);
                 p.Success = true;
                 Enqueue(p);
@@ -14015,6 +15226,15 @@ namespace Server.MirObjects
                 if (cost > Account.Gold) return;
 
                 Account.Gold -= cost;
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        ctx.AccountInfos.Attach(Account);
+                        ctx.Entry(Account).State = EntityState.Modified;
+                        ctx.SaveChanges();
+                    }
+                }
                 Enqueue(new S.LoseGold { Gold = cost });
                 if (ob.Conq != null) ob.Conq.GoldStorage += (cost - baseCost);
 
@@ -14022,6 +15242,15 @@ namespace Server.MirObjects
 
                 temp.CurrentDura = temp.MaxDura;
                 temp.DuraChanged = false;
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        ctx.UserItems.Attach(temp);
+                        ctx.Entry(temp).State = EntityState.Modified;
+                        ctx.SaveChanges();
+                    }
+                }
 
                 Enqueue(new S.ItemRepaired { UniqueID = uniqueID, MaxDura = temp.MaxDura, CurrentDura = temp.CurrentDura });
                 return;
@@ -14096,17 +15325,36 @@ namespace Server.MirObjects
                     return;
                 }
 
+                if (temp.RentalInformation != null && temp.RentalInformation.BindingFlags.HasFlag(BindMode.DontSell))
+                {
+                    Enqueue(p);
+                    return;
+                }
+
                 //Check Max Consignment.
 
                 AuctionInfo auction = new AuctionInfo
                 {
-                    AuctionID = ++Envir.NextAuctionID,
                     CharacterIndex = Info.Index,
                     CharacterInfo = Info,
                     ConsignmentDate = Envir.Now,
                     Item = temp,
                     Price = price
                 };
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        auction.UserItemUniqueID = temp.UniqueID;
+                        ctx.AuctionInfos.Attach(auction);
+                        ctx.Entry(auction).State = EntityState.Added;
+                        ctx.SaveChanges();
+                    }
+                }
+                else
+                {
+                    auction.AuctionID = ++Envir.NextAuctionID;
+                }
 
                 Account.Auctions.AddLast(auction);
                 Envir.Auctions.AddFirst(auction);
@@ -14117,7 +15365,28 @@ namespace Server.MirObjects
                 Report.ItemChanged("ConsignItem", temp, temp.Count, 1);
 
                 Info.Inventory[index] = null;
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        var dbIvt = ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(index).FirstOrDefault();
+                        if (dbIvt != null)
+                        {
+                            dbIvt.ItemUniqueID = null;
+                            ctx.SaveChanges();
+                        }
+                    }
+                }
                 Account.Gold -= Globals.ConsignmentCost;
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        ctx.AccountInfos.Attach(Account);
+                        ctx.Entry(Account).State = EntityState.Modified;
+                        ctx.SaveChanges();
+                    }
+                }
                 Enqueue(new S.LoseGold { Gold = Globals.ConsignmentCost });
                 RefreshBagWeight();
 
@@ -14283,6 +15552,17 @@ namespace Server.MirObjects
 
                     auction.Sold = true;
                     Account.Gold -= auction.Price;
+                    if (Settings.UseSQLServer)
+                    {
+                        using (var ctx = new DataContext())
+                        {
+                            ctx.AccountInfos.Attach(Account);
+                            ctx.Entry(Account).State = EntityState.Modified;
+                            ctx.AuctionInfos.Attach(auction);
+                            ctx.Entry(auction).State = EntityState.Modified;
+                            ctx.SaveChanges();
+                        }
+                    }
                     Enqueue(new S.LoseGold { Gold = auction.Price });
                     GainItem(auction.Item);
 
@@ -14394,6 +15674,18 @@ namespace Server.MirObjects
 
                 Awake awake = item.Awake;
 
+                if (item.Info.Bind.HasFlag(BindMode.DontUpgrade))
+                {
+                    Enqueue(new S.Awakening { result = -1, removeID = -1 });
+                    return;
+                }
+
+                if (item.RentalInformation != null && item.RentalInformation.BindingFlags.HasFlag(BindMode.DontUpgrade))
+                {
+                    Enqueue(new S.Awakening { result = -1, removeID = -1 });
+                    return;
+                }
+
                 if (!item.Info.CanAwakening)
                 {
                     Enqueue(new S.Awakening { result = -1, removeID = -1 });
@@ -14415,6 +15707,15 @@ namespace Server.MirObjects
                 if (HasAwakeningNeedMaterials(item, type))
                 {
                     Info.AccountInfo.Gold -= item.AwakeningPrice();
+                    if (Settings.UseSQLServer)
+                    {
+                        using (var ctx = new DataContext())
+                        {
+                            ctx.AccountInfos.Attach(Account);
+                            ctx.Entry(Account).State = EntityState.Modified;
+                            ctx.SaveChanges();
+                        }
+                    }
                     Enqueue(new S.LoseGold { Gold = item.AwakeningPrice() });
 
                     bool[] isHit;
@@ -14427,11 +15728,35 @@ namespace Server.MirObjects
                         case 0:
                             AwakeningEffect(false, isHit);
                             Info.Inventory[i] = null;
+                            if (Settings.UseSQLServer)
+                            {
+                                using (var ctx = new DataContext())
+                                {
+                                    ctx.UserItems.Attach(item);
+                                    ctx.Entry(item).State = EntityState.Deleted;
+                                    var dbIvt =
+                                        ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(i).FirstOrDefault();
+                                    if (dbIvt != null)
+                                    {
+                                        dbIvt.ItemUniqueID = null;
+                                    }
+                                    ctx.SaveChanges();
+                                }
+                            }
                             Enqueue(new S.Awakening { result = 0, removeID = (long)item.UniqueID });
                             break;
                         case 1:
                             Enqueue(new S.RefreshItem { Item = item });
                             AwakeningEffect(true, isHit);
+                            if (Settings.UseSQLServer)
+                            {
+                                using (var ctx = new DataContext())
+                                {
+                                    ctx.UserItems.Attach(item);
+                                    ctx.Entry(item).State = EntityState.Modified;
+                                    ctx.SaveChanges();
+                                }
+                            }
                             Enqueue(new S.Awakening { result = 1, removeID = -1 });
                             break;
                         default:
@@ -14453,9 +15778,24 @@ namespace Server.MirObjects
                 {
                     if (item.UniqueID == UniqueID)
                     {
+                        if (item.RentalInformation != null)
+                        {
+                            ReceiveChat($"Unable to downgrade {item.FriendlyName} as it belongs to {item.RentalInformation.OwnerName}", ChatType.System);
+                            return;
+                        }
+
                         if (Info.AccountInfo.Gold >= item.DowngradePrice())
                         {
                             Info.AccountInfo.Gold -= item.DowngradePrice();
+                            if (Settings.UseSQLServer)
+                            {
+                                using (var ctx = new DataContext())
+                                {
+                                    ctx.AccountInfos.Attach(Account);
+                                    ctx.Entry(Account).State = EntityState.Modified;
+                                    ctx.SaveChanges();
+                                }
+                            }
                             Enqueue(new S.LoseGold { Gold = item.DowngradePrice() });
 
                             Awake awake = item.Awake;
@@ -14471,6 +15811,15 @@ namespace Server.MirObjects
 
                                     Info.Inventory[i].CurrentDura = (Info.Inventory[i].CurrentDura >= maxDura) ? maxDura : Info.Inventory[i].CurrentDura;
                                     Info.Inventory[i].MaxDura = maxDura;
+                                    if (Settings.UseSQLServer)
+                                    {
+                                        using (var ctx = new DataContext())
+                                        {
+                                            ctx.UserItems.Attach(Info.Inventory[i]);
+                                            ctx.Entry(Info.Inventory[i]).State = EntityState.Modified;
+                                            ctx.SaveChanges();
+                                        }
+                                    }
                                     ReceiveChat(string.Format("{0} : Remove success. Level {1}", item.Name, item.Awake.getAwakeLevel()), ChatType.System);
                                     Enqueue(new S.RefreshItem { Item = item });
                                     break;
@@ -14491,7 +15840,21 @@ namespace Server.MirObjects
             for (int i = 0; i < Info.Inventory.Length; i++)
             {
                 UserItem item = Info.Inventory[i];
-                if (item == null || item.UniqueID != UniqueID) continue;
+
+                if (item == null || item.UniqueID != UniqueID)
+                    continue;
+
+                if (item.Info.Bind.HasFlag(BindMode.UnableToDisassemble))
+                {
+                    ReceiveChat($"Unable to disassemble {item.FriendlyName}", ChatType.System);
+                    return;
+                }
+
+                if (item.RentalInformation != null && item.RentalInformation.BindingFlags.HasFlag(BindMode.UnableToDisassemble))
+                {
+                    ReceiveChat($"Unable to disassemble {item.FriendlyName} as it belongs to {item.RentalInformation.OwnerName}", ChatType.System);
+                    return;
+                }
 
                 if (Info.AccountInfo.Gold >= item.DisassemblePrice())
                 {
@@ -14527,6 +15890,17 @@ namespace Server.MirObjects
 
                     Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = item.Count });
                     Info.Inventory[i] = null;
+                    if (Settings.UseSQLServer)
+                    {
+                        using (var ctx = new DataContext())
+                        {
+                            ctx.AccountInfos.Attach(Account);
+                            ctx.Entry(Account).State = EntityState.Modified;
+                            ctx.UserItems.Attach(Info.Inventory[i]);
+                            ctx.Entry(Info.Inventory[i]).State = EntityState.Deleted;
+                            ctx.SaveChanges();
+                        }
+                    }
                 }
             }
         }
@@ -14543,9 +15917,24 @@ namespace Server.MirObjects
                 {
                     if (item.UniqueID == UniqueID)
                     {
+                        if (item.RentalInformation != null)
+                        {
+                            ReceiveChat($"Unable to reset {item.FriendlyName} as it belongs to {item.RentalInformation.OwnerName}", ChatType.System);
+                            return;
+                        }
+
                         if (Info.AccountInfo.Gold >= item.ResetPrice())
                         {
                             Info.AccountInfo.Gold -= item.ResetPrice();
+                            if (Settings.UseSQLServer)
+                            {
+                                using (var ctx = new DataContext())
+                                {
+                                    ctx.AccountInfos.Attach(Account);
+                                    ctx.Entry(Account).State = EntityState.Modified;
+                                    ctx.SaveChanges();
+                                }
+                            }
                             Enqueue(new S.LoseGold { Gold = item.ResetPrice() });
 
                             UserItem newItem = new UserItem(item.Info);
@@ -14560,9 +15949,17 @@ namespace Server.MirObjects
                             newItem.Count = item.Count;
                             newItem.Slots = item.Slots;
                             newItem.Awake = item.Awake;
-
+                            
+                            if (Settings.UseSQLServer)
+                            {
+                                using (var ctx = new DataContext())
+                                {
+                                    ctx.UserItems.Attach(newItem);
+                                    ctx.Entry(newItem).State = EntityState.Modified;
+                                    ctx.SaveChanges();
+                                }
+                            }
                             Info.Inventory[i] = newItem;
-
                             Enqueue(new S.RefreshItem { Item = Info.Inventory[i] });
                         }
                     }
@@ -14705,12 +16102,37 @@ namespace Server.MirObjects
                             {
                                 Enqueue(new S.DeleteItem { UniqueID = Info.Inventory[i].UniqueID, Count = Info.Inventory[i].Count });
                                 currentCount[0] -= (byte)Info.Inventory[i].Count;
+                                if (Settings.UseSQLServer)
+                                {
+                                    using (var ctx = new DataContext())
+                                    {
+                                        ctx.UserItems.Attach(Info.Inventory[i]);
+                                        ctx.Entry(Info.Inventory[i]).State = EntityState.Deleted;
+                                        var dbIvt =
+                                            ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(i)
+                                                .FirstOrDefault();
+                                        if (dbIvt != null)
+                                        {
+                                            dbIvt.ItemUniqueID = null;
+                                        }
+                                        ctx.SaveChanges();
+                                    }
+                                }
                                 Info.Inventory[i] = null;
                             }
                             else if (Info.Inventory[i].Count > currentCount[0])
                             {
                                 Enqueue(new S.DeleteItem { UniqueID = Info.Inventory[i].UniqueID, Count = (uint)currentCount[0] });
                                 Info.Inventory[i].Count -= currentCount[0];
+                                if (Settings.UseSQLServer)
+                                {
+                                    using (var ctx = new DataContext())
+                                    {
+                                        ctx.UserItems.Attach(Info.Inventory[i]);
+                                        ctx.Entry(Info.Inventory[i]).State = EntityState.Modified;
+                                        ctx.SaveChanges();
+                                    }
+                                }
                                 currentCount[0] = 0;
                             }
                         }
@@ -14721,12 +16143,37 @@ namespace Server.MirObjects
                             {
                                 Enqueue(new S.DeleteItem { UniqueID = Info.Inventory[i].UniqueID, Count = Info.Inventory[i].Count });
                                 currentCount[1] -= (byte)Info.Inventory[i].Count;
+                                if (Settings.UseSQLServer)
+                                {
+                                    using (var ctx = new DataContext())
+                                    {
+                                        ctx.UserItems.Attach(Info.Inventory[i]);
+                                        ctx.Entry(Info.Inventory[i]).State = EntityState.Deleted;
+                                        var dbIvt =
+                                            ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(i)
+                                                .FirstOrDefault();
+                                        if (dbIvt != null)
+                                        {
+                                            dbIvt.ItemUniqueID = null;
+                                        }
+                                        ctx.SaveChanges();
+                                    }
+                                }
                                 Info.Inventory[i] = null;
                             }
                             else if (Info.Inventory[i].Count > currentCount[1])
                             {
                                 Enqueue(new S.DeleteItem { UniqueID = Info.Inventory[i].UniqueID, Count = (uint)currentCount[1] });
                                 Info.Inventory[i].Count -= currentCount[1];
+                                if (Settings.UseSQLServer)
+                                {
+                                    using (var ctx = new DataContext())
+                                    {
+                                        ctx.UserItems.Attach(Info.Inventory[i]);
+                                        ctx.Entry(Info.Inventory[i]).State = EntityState.Modified;
+                                        ctx.SaveChanges();
+                                    }
+                                }
                                 currentCount[1] = 0;
                             }
                         }
@@ -14746,7 +16193,15 @@ namespace Server.MirObjects
 
             if (AllowGroup == allow) return;
             AllowGroup = allow;
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(Info);
+                    ctx.Entry(Info).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             if (AllowGroup || GroupMembers == null) return;
 
             RemoveGroupBuff();
@@ -15094,6 +16549,15 @@ namespace Server.MirObjects
                     if (Info.AccountInfo.Gold >= Required.Amount)
                     {
                         Info.AccountInfo.Gold -= Required.Amount;
+                        if (Settings.UseSQLServer)
+                        {
+                            using (var ctx = new DataContext())
+                            {
+                                ctx.AccountInfos.Attach(Account);
+                                ctx.Entry(Account).State = EntityState.Modified;
+                                ctx.SaveChanges();
+                            }
+                        }
                         Enqueue(new S.LoseGold { Gold = Required.Amount });
                     }
                 }
@@ -15131,9 +16595,23 @@ namespace Server.MirObjects
             }
             RefreshStats();
             //make the guild
-            GuildObject guild = new GuildObject(this, GuildName) { Guildindex = ++Envir.NextGuildID };
-            Envir.GuildList.Add(guild);
+            GuildObject guild = new GuildObject(this, GuildName) {  };
             Info.GuildIndex = guild.Guildindex;
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(Info);
+                    ctx.Entry(Info).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                    
+                }
+            }
+            else
+            {
+                guild.Guildindex = ++Envir.NextGuildID;
+            }
+            Envir.GuildList.Add(guild);
             MyGuild = guild;
             MyGuildRank = guild.FindRank(Name);
             GuildMembersChanged = true;
@@ -15163,7 +16641,7 @@ namespace Server.MirObjects
                     PlayerObject player = Envir.GetPlayer(Name);
                     if (player == null)
                     {
-                        ReceiveChat(String.Format("{0} is not online!", Name), ChatType.System);
+                        ReceiveChat(String.Format("{0} 不在线!", Name), ChatType.System);
                         return;
                     }
                     if ((player.MyGuild != null) || (player.MyGuildRank != null) || (player.Info.GuildIndex != -1))
@@ -15309,6 +16787,23 @@ namespace Server.MirObjects
             RefreshStats();
             if (MyGuild.BuffList.Count > 0)
                 Enqueue(new S.GuildBuffList() { ActiveBuffs = MyGuild.BuffList});
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.Guilds.Attach(MyGuild);
+                    ctx.CharacterInfos.Attach(Info);
+                    ctx.GuildMembers.Add(new GuildMember()
+                    {
+                        name = Info.Name,
+                        RankId = MyGuildRank.id,
+                        LastLogin = Info.LastDate ?? DateTime.Now
+                    });
+                    ctx.Entry(MyGuild).State = EntityState.Modified;
+                    ctx.Entry(Info).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
         }
         public void RequestGuildInfo(byte Type)
         {
@@ -15387,6 +16882,18 @@ namespace Server.MirObjects
                 }
                 Account.Gold -= Amount;
                 MyGuild.Gold += Amount;
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        ctx.AccountInfos.Attach(Account);
+                        ctx.Guilds.Attach(MyGuild);
+                        ctx.Entry(Account).State = EntityState.Modified;
+                        ctx.Entry(MyGuild).State = EntityState.Modified;
+                        ctx.SaveChanges();
+                    }
+                }
+                
                 Enqueue(new S.LoseGold { Gold = Amount });
                 MyGuild.SendServerPacket(new S.GuildStorageGoldChange() { Type = 0, Name = Info.Name, Amount = Amount });
                 MyGuild.NeedSave = true;
@@ -15410,6 +16917,15 @@ namespace Server.MirObjects
                 }
 
                 MyGuild.Gold -= Amount;
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        ctx.Guilds.Attach(MyGuild);
+                        ctx.Entry(MyGuild).State = EntityState.Modified;
+                        ctx.SaveChanges();
+                    }
+                }
                 GainGold(Amount);
                 MyGuild.SendServerPacket(new S.GuildStorageGoldChange() { Type = 1, Name = Info.Name, Amount = Amount });
                 MyGuild.NeedSave = true;
@@ -15425,7 +16941,7 @@ namespace Server.MirObjects
                 return;
             }
 
-            if (!InSafeZone)
+            if (!InSafeZone && Type != 3)
             {
                 Enqueue(p);
                 ReceiveChat("You cannot use guild storage outside safezones.", ChatType.System);
@@ -15461,6 +16977,11 @@ namespace Server.MirObjects
                         Enqueue(p);
                         return;
                     }
+                    if (Info.Inventory[from].RentalInformation != null && Info.Inventory[from].RentalInformation.BindingFlags.HasFlag(BindMode.DontStore))
+                    {
+                        Enqueue(p);
+                        return;
+                    }
                     if (MyGuild.StoredItems[to] != null)
                     {
                         ReceiveChat("Target slot not empty.", ChatType.System);
@@ -15469,6 +16990,27 @@ namespace Server.MirObjects
                     }
                     MyGuild.StoredItems[to] = new GuildStorageItem() { Item = Info.Inventory[from], UserId = Info.Index };
                     Info.Inventory[from] = null;
+                    if (Settings.UseSQLServer)
+                    {
+                        using (var ctx = new DataContext())
+                        {
+                            var dbIvt =
+                                ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(from).FirstOrDefault();
+                            if (dbIvt != null)
+                            {
+                                dbIvt.ItemUniqueID = null;
+                            }
+                            var dbStrg =
+                                ctx.GuildStorageItems.Where(strg => strg.GuildIndex == MyGuild.Guildindex).OrderBy(strg => strg.id).Skip(to)
+                                    .FirstOrDefault();
+                            if (dbStrg != null)
+                            {
+                                dbStrg.ItemUniqueID = MyGuild.StoredItems[to].Item.UniqueID;
+                                dbStrg.UserId = Info.Index;
+                            }
+                            ctx.SaveChanges();
+                        }
+                    }
                     RefreshBagWeight();
                     MyGuild.SendItemInfo(MyGuild.StoredItems[to].Item);
                     MyGuild.SendServerPacket(new S.GuildStorageItemChange() { Type = 0, User = Info.Index, Item = MyGuild.StoredItems[to], To = to, From = from });
@@ -15518,6 +17060,26 @@ namespace Server.MirObjects
                     MyGuild.SendServerPacket(new S.GuildStorageItemChange() { Type = 1, User = Info.Index, To = to, From = from });
                     RefreshBagWeight();
                     MyGuild.NeedSave = true;
+                    if (Settings.UseSQLServer)
+                    {
+                        using (var ctx = new DataContext())
+                        {
+                            var dbIvt =
+                                ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(from).FirstOrDefault();
+                            if (dbIvt != null)
+                            {
+                                dbIvt.ItemUniqueID = Info.Inventory[to].UniqueID;
+                            }
+                            var dbStrg =
+                                ctx.GuildStorageItems.Where(strg => strg.GuildIndex == MyGuild.Guildindex).OrderBy(strg => strg.id).Skip(to)
+                                    .FirstOrDefault();
+                            if (dbStrg != null)
+                            {
+                                dbStrg.ItemUniqueID = null;
+                                dbStrg.UserId = null;
+                            }
+                        }
+                    }
                     break;
                 case 2: // Move Item
                     GuildStorageItem q = null;
@@ -15554,7 +17116,26 @@ namespace Server.MirObjects
                     MyGuild.StoredItems[to] = MyGuild.StoredItems[from];
                     if (q != null) MyGuild.StoredItems[from] = q;
                     else MyGuild.StoredItems[from] = null;
-
+                    if (Settings.UseSQLServer)
+                    {
+                        using (var ctx = new DataContext())
+                        {
+                            var dbFromStrg =
+                                ctx.GuildStorageItems.Where(strg => strg.GuildIndex == MyGuild.Guildindex).OrderBy(strg => strg.id).Skip(from)
+                                    .FirstOrDefault();
+                            var dbToStrg =
+                                ctx.GuildStorageItems.Where(strg => strg.GuildIndex == MyGuild.Guildindex).OrderBy(strg => strg.id).Skip(to)
+                                    .FirstOrDefault();
+                            if (dbFromStrg != null && dbToStrg != null)
+                            {
+                                dbFromStrg.ItemUniqueID = MyGuild.StoredItems[from]?.Item?.UniqueID;
+                                dbFromStrg.UserId = MyGuild.StoredItems[from]?.UserId;
+                                dbToStrg.ItemUniqueID = MyGuild.StoredItems[to]?.Item?.UniqueID;
+                                dbToStrg.UserId = MyGuild.StoredItems[to]?.UserId;
+                                ctx.SaveChanges();
+                            }
+                        }
+                    }
                     MyGuild.SendItemInfo(MyGuild.StoredItems[to].Item);
 
                     if (MyGuild.StoredItems[from] != null) MyGuild.SendItemInfo(MyGuild.StoredItems[from].Item);
@@ -15614,6 +17195,15 @@ namespace Server.MirObjects
                 enemyGuild.SendMessage(string.Format("{0} has started a war", MyGuild.Name), ChatType.System);
 
                 MyGuild.Gold -= Settings.Guild_WarCost;
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        ctx.Guilds.Attach(MyGuild);
+                        ctx.Entry(MyGuild).State = EntityState.Modified;
+                        ctx.SaveChanges();
+                    }
+                }
                 MyGuild.SendServerPacket(new S.GuildStorageGoldChange() { Type = 2, Name = Info.Name, Amount = Settings.Guild_WarCost });
             }
         }
@@ -15709,6 +17299,12 @@ namespace Server.MirObjects
             }
 
             if (temp.Info.Bind.HasFlag(BindMode.DontTrade))
+            {
+                Enqueue(p);
+                return;
+            }
+
+            if (temp.RentalInformation != null && temp.RentalInformation.BindingFlags.HasFlag(BindMode.DontTrade))
             {
                 Enqueue(p);
                 return;
@@ -15901,7 +17497,15 @@ namespace Server.MirObjects
 
             TradeGoldAmount += amount;
             Account.Gold -= amount;
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.AccountInfos.Attach(Account);
+                    ctx.Entry(Account).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             Enqueue(new S.LoseGold { Gold = amount });
             TradePartner.Enqueue(new S.TradeGold { Amount = TradeGoldAmount });
         }
@@ -16054,6 +17658,16 @@ namespace Server.MirObjects
 
                         if (temp == null) continue;
 
+                        if(FreeSpace(TradePair[p].Info.Inventory) < 1)
+                        {
+                            TradePair[p].GainItemMail(temp, 1);
+                            Report.ItemMailed("TradeCancel", temp, temp.Count, 1);
+
+                            TradePair[p].Enqueue(new S.DeleteItem { UniqueID = temp.UniqueID, Count = temp.Count });
+                            TradePair[p].Info.Trade[t] = null;
+                            continue;
+                        }
+
                         for (int i = 0; i < TradePair[p].Info.Inventory.Length; i++)
                         {
                             if (TradePair[p].Info.Inventory[i] != null) continue;
@@ -16098,7 +17712,7 @@ namespace Server.MirObjects
 
         #region Mounts
 
-        public void RefreshMount()
+        public void RefreshMount(bool refreshStats = true)
         {
             if (RidingMount)
             {
@@ -16127,6 +17741,7 @@ namespace Server.MirObjects
                 RidingMount = false;
             }
 
+            if(refreshStats)
             RefreshStats();
 
             Broadcast(GetMountInfo());
@@ -16531,7 +18146,15 @@ namespace Server.MirObjects
             }
 
             QuestProgressInfo quest = new QuestProgressInfo(index) { StartDateTime = DateTime.Now };
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.QuestProgressInfos.Attach(quest);
+                    ctx.Entry(quest).State = EntityState.Added;
+                    ctx.SaveChanges();
+                }
+            }
             CurrentQuests.Add(quest);
             SendUpdateQuest(quest, QuestState.Add, true);
 
@@ -16619,6 +18242,15 @@ namespace Server.MirObjects
             if (quest.Info.Type != QuestType.Repeatable)
             {
                 Info.CompletedQuests.Add(quest.Index);
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        ctx.CharacterInfos.Attach(Info);
+                        ctx.Entry(Info).State = EntityState.Modified;
+                        ctx.SaveChanges();
+                    }
+                }
                 GetCompletedQuests();
             }
 
@@ -16648,7 +18280,15 @@ namespace Server.MirObjects
             GainGold(quest.Info.GoldReward);
             GainExp(quest.Info.ExpReward);
             GainCredit(quest.Info.CreditReward);
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.QuestProgressInfos.Attach(quest);
+                    ctx.Entry(quest).State = EntityState.Deleted;
+                    ctx.SaveChanges();
+                }
+            }
             CallDefaultNPC(DefaultNPCType.OnFinishQuest, questIndex);
         }
         public void AbandonQuest(int questIndex)
@@ -16659,7 +18299,15 @@ namespace Server.MirObjects
 
             CurrentQuests.Remove(quest);
             SendUpdateQuest(quest, QuestState.Remove);
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.QuestProgressInfos.Attach(quest);
+                    ctx.Entry(quest).State = EntityState.Deleted;
+                    ctx.SaveChanges();
+                }
+            }
             RecalculateQuestBag();
         }
         public void ShareQuest(int questIndex)
@@ -16904,7 +18552,30 @@ namespace Server.MirObjects
 
                     if (item.Count > 1) item.Count--;
                     else Info.Inventory[i] = null;
-
+                    if (Settings.UseSQLServer)
+                    {
+                        using (var ctx = new DataContext())
+                        {
+                            if (Info.Inventory[i] == null)
+                            {
+                                ctx.UserItems.Attach(item);
+                                ctx.Entry(item).State = EntityState.Deleted;
+                                var dbIvt =
+                                    ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(i).FirstOrDefault();
+                                if (dbIvt != null)
+                                {
+                                    dbIvt.ItemUniqueID = null;
+                                }
+                                ctx.SaveChanges();
+                            }
+                            else
+                            {
+                                ctx.UserItems.Attach(item);
+                                ctx.Entry(item).State = EntityState.Modified;
+                                ctx.SaveChanges();
+                            }
+                        }
+                    }
                     Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = 1 });
                     break;
                 }
@@ -16928,9 +18599,28 @@ namespace Server.MirObjects
                         return;
                     }
 
+                    if (item.RentalInformation != null && item.RentalInformation.BindingFlags.HasFlag(BindMode.DontTrade))
+                    {
+                        ReceiveChat(string.Format("{0} cannot be mailed", item.FriendlyName), ChatType.System);
+                        return;
+                    }
+
                     giftItems.Add(item);
 
                     Info.Inventory[i] = null;
+                    if (Settings.UseSQLServer)
+                    {
+                        using (var ctx = new DataContext())
+                        {
+                            var dbIvt =
+                                ctx.Inventories.Where(ivt => ivt.CharacterIndex == Info.Index).OrderBy(ivt => ivt.id).Skip(i).FirstOrDefault(ivt => ivt.CharacterIndex == Info.Index);
+                            if (dbIvt != null)
+                            {
+                                dbIvt.ItemUniqueID = null;
+                            }
+                            ctx.SaveChanges();
+                        }
+                    }
                     Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = item.Count });
                 }
             }
@@ -16938,18 +18628,41 @@ namespace Server.MirObjects
             if (totalGold > 0)
             {
                 Account.Gold -= totalGold;
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        ctx.AccountInfos.Attach(Account);
+                        ctx.Entry(Account).State = EntityState.Modified;
+                        ctx.SaveChanges();
+                    }
+                }
                 Enqueue(new S.LoseGold { Gold = totalGold });
             }
 
             //Create parcel
             MailInfo mail = new MailInfo(player.Index, true)
             {
-                MailID = ++Envir.NextMailID,
                 Sender = Info.Name,
                 Message = message,
                 Gold = gold,
                 Items = giftItems
             };
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    mail.CharacterIndex = Info.Index;
+                    mail.MailID = 0;
+                    ctx.Mails.Attach(mail);
+                    ctx.Entry(mail).State = EntityState.Added;
+                    ctx.SaveChanges();
+                }
+            }
+            else
+            {
+                mail.MailID = ++Envir.NextMailID;
+            }
 
             mail.Send();
 
@@ -16963,7 +18676,15 @@ namespace Server.MirObjects
             if (mail == null) return;
 
             mail.DateOpened = DateTime.Now;
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.Mails.Attach(mail);
+                    ctx.Entry(mail).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             GetMail();
         }
 
@@ -17007,7 +18728,15 @@ namespace Server.MirObjects
             mail.Gold = 0;
 
             mail.Collected = true;
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.Mails.Attach(mail);
+                    ctx.Entry(mail).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             Enqueue(new S.ParcelCollected { Result = 1 });
 
             GetMail();
@@ -17020,7 +18749,15 @@ namespace Server.MirObjects
             if (mail == null) return;
 
             Info.Mail.Remove(mail);
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.Mails.Attach(mail);
+                    ctx.Entry(mail).State = EntityState.Deleted;
+                    ctx.SaveChanges();
+                }
+            }
             GetMail();
         }
 
@@ -17031,7 +18768,15 @@ namespace Server.MirObjects
             if (mail == null) return;
 
             mail.Locked = lockMail;
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.Mails.Attach(mail);
+                    ctx.Entry(mail).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             GetMail();
         }
 
@@ -17201,6 +18946,15 @@ namespace Server.MirObjects
                 if (doUpdate) ReceiveChat((string.Format("Creature {0} has been released.", Info.IntelligentCreatures[i].CustomName)), ChatType.System);
 
                 Info.IntelligentCreatures.Remove(Info.IntelligentCreatures[i]);
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        ctx.UserIntelligentCreatures.Attach(Info.IntelligentCreatures[i]);
+                        ctx.Entry(Info.IntelligentCreatures[i]).State = EntityState.Deleted;
+                        ctx.SaveChanges();
+                    }
+                }
                 break;
             }
 
@@ -17234,6 +18988,22 @@ namespace Server.MirObjects
                 ((IntelligentCreatureObject)Pets[i]).CustomName = creatureInfo.CustomName;
                 ((IntelligentCreatureObject)Pets[i]).ItemFilter = creatureInfo.Filter;
                 ((IntelligentCreatureObject)Pets[i]).CurrentPickupMode = creatureInfo.petMode;
+
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        var dbIc =
+                            ctx.UserIntelligentCreatures.FirstOrDefault(
+                                c => c.CharacterIndex == Info.Index && c.PetType == pType);
+                        if (dbIc != null)
+                        {
+                            ctx.Entry(dbIc).CurrentValues.SetValues(creatureInfo);
+                            ctx.SaveChanges();
+                        }
+                        
+                    }
+                }
                 break;
             }
         }
@@ -17245,6 +19015,15 @@ namespace Server.MirObjects
             {
                 if (Info.IntelligentCreatures[i].PetType != pType) continue;
                 Info.IntelligentCreatures[i].Fullness = fullness;
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        ctx.UserIntelligentCreatures.Attach(Info.IntelligentCreatures[i]);
+                        ctx.Entry(Info.IntelligentCreatures[i]).State = EntityState.Deleted;
+                        ctx.SaveChanges();
+                    }
+                }
                 break;
             }
 
@@ -17259,6 +19038,15 @@ namespace Server.MirObjects
             {
                 if (Info.IntelligentCreatures[i].PetType != pType) continue;
                 Info.IntelligentCreatures[i].BlackstoneTime = blackstonetime;
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        ctx.UserIntelligentCreatures.Attach(Info.IntelligentCreatures[i]);
+                        ctx.Entry(Info.IntelligentCreatures[i]).State = EntityState.Deleted;
+                        ctx.SaveChanges();
+                    }
+                }
                 break;
             }
 
@@ -17273,6 +19061,15 @@ namespace Server.MirObjects
             {
                 if (Info.IntelligentCreatures[i].PetType != pType) continue;
                 Info.IntelligentCreatures[i].MaintainFoodTime = maintainfoodtime;
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        ctx.UserIntelligentCreatures.Attach(Info.IntelligentCreatures[i]);
+                        ctx.Entry(Info.IntelligentCreatures[i]).State = EntityState.Deleted;
+                        ctx.SaveChanges();
+                    }
+                }
                 break;
             }
 
@@ -17300,6 +19097,15 @@ namespace Server.MirObjects
                         if (CreatureSummoned && SummonedCreatureType == Info.IntelligentCreatures[i].PetType)
                             UnSummonIntelligentCreature(SummonedCreatureType, false);//unsummon creature
                         releasedPets.Add(i);
+                    }
+                    if (Settings.UseSQLServer)
+                    {
+                        using (var ctx = new DataContext())
+                        {
+                            ctx.UserIntelligentCreatures.Attach(Info.IntelligentCreatures[i]);
+                            ctx.Entry(Info.IntelligentCreatures[i]).State = EntityState.Deleted;
+                            ctx.SaveChanges();
+                        }
                     }
                 }
                 for (int i = (releasedPets.Count - 1); i >= 0; i--)//start with largest value
@@ -17368,18 +19174,45 @@ namespace Server.MirObjects
         public void IntelligentCreatureGainPearls(int amount)
         {
             Info.PearlCount += amount;
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(Info);
+                    ctx.Entry(Info).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             if (Info.PearlCount > int.MaxValue) Info.PearlCount = int.MaxValue;
         }
 
         public void IntelligentCreatureLosePearls(int amount)
         {
             Info.PearlCount -= amount;
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(Info);
+                    ctx.Entry(Info).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             if (Info.PearlCount < 0) Info.PearlCount = 0;
         }
 
         public void IntelligentCreatureProducePearl()
         {
             Info.PearlCount++;
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(Info);
+                    ctx.Entry(Info).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
         }
         public bool IntelligentCreatureProduceBlackStone()
         {
@@ -17598,8 +19431,18 @@ namespace Server.MirObjects
             }
 
             FriendInfo friend = new FriendInfo(info, blocked);
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    friend.CharacterIndex = Info.Index;
+                    ctx.Friends.Attach(friend);
+                    ctx.Entry(friend).State = EntityState.Added;
+                    ctx.SaveChanges();
+                }
+            }
             Info.Friends.Add(friend);
+            
 
             GetFriends();
         }
@@ -17612,7 +19455,15 @@ namespace Server.MirObjects
             {
                 return;
             }
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.Friends.Attach(friend);
+                    ctx.Entry(friend).State = EntityState.Deleted;
+                    ctx.SaveChanges();
+                }
+            }
             Info.Friends.Remove(friend);
 
             GetFriends();
@@ -17630,7 +19481,15 @@ namespace Server.MirObjects
             }
 
             friend.Memo = memo;
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.Friends.Attach(friend);
+                    ctx.Entry(friend).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             GetFriends();
         }
 
@@ -17824,6 +19683,11 @@ namespace Server.MirObjects
                 return;
             }
 
+            if (Info.Inventory[index].RentalInformation != null && Info.Inventory[index].RentalInformation.BindingFlags.HasFlag(BindMode.DontUpgrade))
+            {
+                ReceiveChat(String.Format("Your {0} can't be refined.", Info.Inventory[index].FriendlyName), ChatType.System);
+                return;
+            }
 
 
             if (index == -1) return;
@@ -17841,6 +19705,15 @@ namespace Server.MirObjects
             }
 
             Account.Gold -= cost;
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.AccountInfos.Attach(Account);
+                    ctx.Entry(Account).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             Enqueue(new S.LoseGold { Gold = cost });
 
             //START OF FORMULA
@@ -17999,6 +19872,20 @@ namespace Server.MirObjects
             }
             else
             {
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        ctx.CurrentRefines.RemoveRange(ctx.CurrentRefines.Where(r => r.CharacterIndex == Info.Index));
+                        ctx.SaveChanges();
+                        ctx.CurrentRefines.Add(new CurrentRefineItem()
+                        {
+                            CharacterIndex = Info.Index,
+                            ItemUniqueID = Info.CurrentRefine.UniqueID
+                        });
+                        ctx.SaveChanges();
+                    }
+                }
                 ReceiveChat(String.Format("Your {0} is now being refined, please check back in {1} minute(s).", Info.CurrentRefine.FriendlyName, Settings.RefineTime), ChatType.System);
             }
         }
@@ -18048,7 +19935,14 @@ namespace Server.MirObjects
             p.Success = true;
 
             GainItem(Info.CurrentRefine);
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CurrentRefines.RemoveRange(ctx.CurrentRefines.Where(r => r.CharacterIndex == Info.Index));
+                    ctx.SaveChanges();
+                }
+            }
             Info.CurrentRefine = null;
             Info.CollectTime = 0;
             Enqueue(p);
@@ -18110,7 +20004,15 @@ namespace Server.MirObjects
                 Info.Inventory[index] = null;
                 return;
             }
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.UserItems.Attach(Info.Inventory[index]);
+                    ctx.Entry(Info.Inventory[index]).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             Enqueue(new S.ItemUpgraded { Item = Info.Inventory[index] });
             return;
         }
@@ -18265,14 +20167,32 @@ namespace Server.MirObjects
 
             Account.Gold -= cost;
             Enqueue(new S.LoseGold { Gold = cost });
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.AccountInfos.Attach(Account);
+                    ctx.Entry(Account).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
 
             temp.WeddingRing = Info.Married;
             CurrentRing.WeddingRing = -1;
 
             Info.Equipment[(int)EquipmentSlot.RingL] = temp;
             Info.Inventory[index] = CurrentRing;
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.UserItems.Attach(Info.Inventory[index]);
+                    ctx.UserItems.Attach(Info.Equipment[(int)EquipmentSlot.RingL]);
+                    ctx.Entry(Info.Inventory[index]).State = EntityState.Modified;
+                    ctx.Entry(Info.Equipment[(int)EquipmentSlot.RingL]).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             Enqueue(new S.EquipItem { Grid = MirGridType.Inventory, UniqueID = temp.UniqueID, To = (int)EquipmentSlot.RingL, Success = true });
 
             Enqueue(new S.RefreshItem { Item = Info.Inventory[index] });
@@ -18426,7 +20346,17 @@ namespace Server.MirObjects
 
             MarriageProposal.ReceiveChat(string.Format("Congratulations, you're now married to {0}.", Info.Name), ChatType.System);
             ReceiveChat(String.Format("Congratulations, you're now married to {0}.", MarriageProposal.Info.Name), ChatType.System);
-
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(Info);
+                    ctx.CharacterInfos.Attach(MarriageProposal.Info);
+                    ctx.Entry(Info).State = EntityState.Modified;
+                    ctx.Entry(MarriageProposal.Info).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             MarriageProposal = null;
         }
 
@@ -18553,6 +20483,17 @@ namespace Server.MirObjects
 
             GetRelationship(false);
             DivorceProposal.GetRelationship(false);
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(Info);
+                    ctx.CharacterInfos.Attach(DivorceProposal.Info);
+                    ctx.Entry(Info).State = EntityState.Modified;
+                    ctx.Entry(DivorceProposal.Info).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
             DivorceProposal = null;
         }
 
@@ -18682,6 +20623,17 @@ namespace Server.MirObjects
             Mentor.isMentor = false;
             Info.MentorExp = 0;
             Mentor.MentorExp = 0;
+            if (Settings.UseSQLServer)
+            {
+                using (var ctx = new DataContext())
+                {
+                    ctx.CharacterInfos.Attach(Info);
+                    ctx.CharacterInfos.Attach(Mentor);
+                    ctx.Entry(Info).State = EntityState.Modified;
+                    ctx.Entry(Mentor).State = EntityState.Modified;
+                    ctx.SaveChanges();
+                }
+            }
         }
 
         public void AddMentor(string Name)
@@ -18809,6 +20761,17 @@ namespace Server.MirObjects
                 Student.ReceiveChat(String.Format("You're now being Mentored by {0}.", Info.Name), ChatType.System);
                 GetMentor(false);
                 Student.GetMentor(false);
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        ctx.CharacterInfos.Attach(Info);
+                        ctx.CharacterInfos.Attach(Student.Info);
+                        ctx.Entry(Info).State = EntityState.Modified;
+                        ctx.Entry(Student.Info).State = EntityState.Modified;
+                        ctx.SaveChanges();
+                    }
+                }
             }
         }
 
@@ -18892,7 +20855,7 @@ namespace Server.MirObjects
 
         public void GameshopBuy(int GIndex, byte Quantity)
         {
-            if (Quantity < 1) return;
+            if (Quantity < 1 || Quantity > 99) return;
 
             List<GameShopItem> shopList = Envir.GameShopList;
             GameShopItem Product = null;
@@ -18920,6 +20883,14 @@ namespace Server.MirObjects
                 SMain.EnqueueDebugging(Info.Name + " is trying to buy Something that doesn't exist.");
                 return;
             }
+            if (Product.Info == null)
+            {
+                using (var ctx = new DataContext())
+                {
+                    Product.Info = ctx.ItemInfos.FirstOrDefault(info => info.Index == Product.ItemIndex);
+                }
+            }
+            if (((decimal)(Quantity * Product.Count) / Product.Info.StackSize) > 5) return;
 
             if (Product.Stock != 0)
             {
@@ -18985,7 +20956,15 @@ namespace Server.MirObjects
                 SMain.EnqueueDebugging(Info.Name + " is trying to buy " + Product.Info.FriendlyName + " x " + Quantity + " - Has enough currency.");
                 Account.Gold -= GoldCost;
                 Account.Credit -= CreditCost;
-
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        ctx.AccountInfos.Attach(Account);
+                        ctx.Entry(Account).State = EntityState.Modified;
+                        ctx.SaveChanges();
+                    }
+                }
                 Report.GoldChanged("GameShop", GoldCost, true, Product.Info.FriendlyName);
                 Report.CreditChanged("GameShop", CreditCost, true, Product.Info.FriendlyName);
 
@@ -19166,6 +21145,603 @@ namespace Server.MirObjects
                 Broadcast(new S.Opendoor() { DoorIndex = Doorindex });
             }
         }
+
+        public void GetRentedItems()
+        {
+            Enqueue(new S.GetRentedItems { RentedItems = Info.RentedItems });
     }
+
+        public void ItemRentalRequest()
+        {
+            if (Dead)
+            {
+                ReceiveChat("Unable to rent items while dead.", ChatType.System);
+                return;
+            }
+
+            if (ItemRentalPartner != null)
+            {
+                ReceiveChat("You are already renting an item to another player.", ChatType.System);
+                return;
+            }
+
+            var targetPosition = Functions.PointMove(CurrentLocation, Direction, 1);
+            var targetCell = CurrentMap.GetCell(targetPosition);
+            PlayerObject targetPlayer = null;
+
+            if (targetCell.Objects == null || targetCell.Objects.Count < 1)
+                return;
+
+            foreach (var mapObject in targetCell.Objects)
+            {
+                if (mapObject.Race != ObjectType.Player)
+                    continue;
+
+                targetPlayer = Envir.GetPlayer(mapObject.Name);
+            }
+
+            if (targetPlayer == null)
+            {
+                ReceiveChat("Face the player you would like to rent an item too.", ChatType.System);
+                return;
+            }
+
+            if (Info.RentedItems.Count >= 3)
+            {
+                ReceiveChat("Unable to rent more than 3 items at a time.", ChatType.System);
+                return;
+            }
+
+            if (targetPlayer.Info.HasRentedItem)
+            {
+                ReceiveChat($"{targetPlayer.Name} is unable to rent anymore items at this time.", ChatType.System);
+                return;
+            }
+
+            if (!Functions.FacingEachOther(Direction, CurrentLocation, targetPlayer.Direction,
+                targetPlayer.CurrentLocation))
+            {
+                ReceiveChat("Face the player you would like to rent an item too.", ChatType.System);
+                return;
+            }
+
+            if (targetPlayer == this)
+            {
+                ReceiveChat("You are unable to rent items to yourself.", ChatType.System);
+                return;
+            }
+
+            if (targetPlayer.Dead)
+            {
+                ReceiveChat($"Unable to rent items to {targetPlayer.Name} while dead.", ChatType.System);
+                return;
+            }
+
+            if (!Functions.InRange(targetPlayer.CurrentLocation, CurrentLocation, Globals.DataRange)
+                || targetPlayer.CurrentMap != CurrentMap)
+            {
+                ReceiveChat($"{targetPlayer.Name} is not within range.", ChatType.System);
+                return;
+            }
+
+            if (targetPlayer.ItemRentalPartner != null)
+            {
+                ReceiveChat($"{targetPlayer.Name} is currently busy, try again soon.", ChatType.System);
+                return;
+            }
+
+            ItemRentalPartner = targetPlayer;
+            targetPlayer.ItemRentalPartner = this;
+
+            Enqueue(new S.ItemRentalRequest { Name = targetPlayer.Name, Renting = false });
+            ItemRentalPartner.Enqueue(new S.ItemRentalRequest { Name = Name, Renting = true });
+        }
+
+        public void SetItemRentalFee(uint amount)
+        {
+            if (ItemRentalFeeLocked)
+                return;
+
+            if (Account.Gold < amount)
+                return;
+
+            if (ItemRentalPartner == null)
+                return;
+
+            ItemRentalFeeAmount += amount;
+            Account.Gold -= amount;
+
+            Enqueue(new S.LoseGold { Gold = amount });
+            ItemRentalPartner.Enqueue(new S.ItemRentalFee { Amount = amount });
+        }
+
+        public void SetItemRentalPeriodLength(uint days)
+        {
+            if (ItemRentalItemLocked)
+                return;
+
+            if (ItemRentalPartner == null)
+                return;
+
+            ItemRentalPeriodLength = days;
+            ItemRentalPartner.Enqueue(new S.ItemRentalPeriod { Days = days });
+        }
+
+        public void DepositRentalItem(int from, int to)
+        {
+            var packet = new S.DepositRentalItem { From = from, To = to, Success = false };
+
+            if (ItemRentalItemLocked)
+            {
+                Enqueue(packet);
+                return;
+            }
+
+            if (from < 0 || from >= Info.Inventory.Length)
+            {
+                Enqueue(packet);
+                return;
+            }
+
+            // TODO: Change this check.
+            if (to < 0 || to >= 1)
+            {
+                Enqueue(packet);
+                return;
+            }
+
+            var item = Info.Inventory[from];
+
+            if (item == null)
+            {
+                Enqueue(packet);
+                return;
+            }
+
+            if (item.RentalInformation?.RentalLocked == true)
+            {
+                ReceiveChat($"Unable to rent {item.FriendlyName} until {item.RentalInformation.ExpiryDate}", ChatType.System);
+                Enqueue(packet);
+                return;
+            }
+
+            if (item.Info.Bind.HasFlag(BindMode.UnableToRent))
+            {
+                ReceiveChat($"Unable to rent {item.FriendlyName}", ChatType.System);
+                Enqueue(packet);
+                return;
+            }
+
+            if (item.RentalInformation != null && item.RentalInformation.BindingFlags.HasFlag(BindMode.UnableToRent))
+            {
+                ReceiveChat($"Unable to rent {item.FriendlyName} as it belongs to {item.RentalInformation.OwnerName}", ChatType.System);
+                Enqueue(packet);
+                return;
+            }
+
+            if (ItemRentalDepositedItem == null)
+            {
+                ItemRentalDepositedItem = item;
+                Info.Inventory[from] = null;
+
+                packet.Success = true;
+                RefreshBagWeight();
+                UpdateRentalItem();
+                Report.ItemMoved("DepositRentalItem", item, MirGridType.Inventory, MirGridType.Renting, from, to);
+            }
+
+            Enqueue(packet);
+        }
+
+        public void RetrieveRentalItem(int from, int to)
+        {
+            var packet = new S.RetrieveRentalItem { From = from, To = to, Success = false };
+
+            // TODO: Change this check.
+            if (from < 0 || from >= 1)
+            {
+                Enqueue(packet);
+                return;
+            }
+
+            if (to < 0 || to >= Info.Inventory.Length)
+            {
+                Enqueue(packet);
+                return;
+            }
+
+            var item = ItemRentalDepositedItem;
+
+            if (item == null)
+            {
+                Enqueue(packet);
+                return;
+            }
+
+            if (item.Weight + CurrentBagWeight > MaxBagWeight)
+            {
+                ReceiveChat("Item is too heavy to retrieve.", ChatType.System);
+                Enqueue(packet);
+                return;
+            }
+
+            if (Info.Inventory[to] == null)
+            {
+                Info.Inventory[to] = item;
+                ItemRentalDepositedItem = null;
+
+                packet.Success = true;
+                RefreshBagWeight();
+                UpdateRentalItem();
+                Report.ItemMoved("RetrieveRentalItem", item, MirGridType.Renting, MirGridType.Inventory, from, to);
+            }
+
+            Enqueue(packet);
+        }
+
+        private void UpdateRentalItem()
+        {
+            if (ItemRentalPartner == null)
+                return;
+
+            if (ItemRentalDepositedItem != null)
+                ItemRentalPartner.CheckItem(ItemRentalDepositedItem);
+
+            ItemRentalPartner.Enqueue(new S.UpdateRentalItem { LoanItem = ItemRentalDepositedItem });
+        }
+
+        public void CancelItemRental()
+        {
+            if (ItemRentalPartner == null)
+                return;
+
+            ItemRentalRemoveLocks();
+
+            var rentalPair = new []  {
+                ItemRentalPartner,
+                this
+            };
+
+            for (var i = 0; i < 2; i++)
+            {
+                if (rentalPair[i] == null)
+                    continue;
+
+                if (rentalPair[i].ItemRentalDepositedItem != null)
+                {
+                    var item = rentalPair[i].ItemRentalDepositedItem;
+
+                    if (FreeSpace(rentalPair[i].Info.Inventory) < 1)
+                    {
+                        rentalPair[i].GainItemMail(item, 1);
+                        rentalPair[i].Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = item.Count });
+                        rentalPair[i].ItemRentalDepositedItem = null;
+
+                        Report.ItemMailed("Cancel Item Rental", item, item.Count, 1);
+
+                        continue;
+                    }
+
+                    for (var j = 0; j < rentalPair[i].Info.Inventory.Length; j++)
+                    {
+                        if (rentalPair[i].Info.Inventory[j] != null)
+                            continue;
+
+                        if (rentalPair[i].CanGainItem(item))
+                            rentalPair[i].RetrieveRentalItem(0, j);
+                        else
+                        {
+                            rentalPair[i].GainItemMail(item, 1);
+                            rentalPair[i].Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = item.Count });
+
+                            Report.ItemMailed("Cancel Item Rental", item, item.Count, 1);
+                        }
+
+                        rentalPair[i].ItemRentalDepositedItem = null;
+
+                        break;
+                    }
+                }
+ 
+                if (rentalPair[i].ItemRentalFeeAmount > 0)
+                {
+                    rentalPair[i].GainGold(rentalPair[i].ItemRentalFeeAmount);
+                    rentalPair[i].ItemRentalFeeAmount = 0;
+
+                    Report.GoldChanged("CancelItemRental", rentalPair[i].ItemRentalFeeAmount, false);
+                }
+
+                rentalPair[i].ItemRentalPartner = null;
+                rentalPair[i].Enqueue(new S.CancelItemRental());
+            }
+        }
+
+        public void ItemRentalLockFee()
+        {
+            S.ItemRentalLock p = new S.ItemRentalLock { Success = false, GoldLocked = false, ItemLocked = false };
+
+            if (ItemRentalFeeAmount > 0)
+            {
+                ItemRentalFeeLocked = true;
+                p.GoldLocked = true;
+                p.Success = true;
+
+                ItemRentalPartner.Enqueue(new S.ItemRentalPartnerLock { GoldLocked = ItemRentalFeeLocked });
+            }
+
+            if (ItemRentalFeeLocked && ItemRentalPartner.ItemRentalItemLocked)
+                ItemRentalPartner.Enqueue(new S.CanConfirmItemRental());
+            else if (ItemRentalFeeLocked && !ItemRentalPartner.ItemRentalItemLocked)
+                ItemRentalPartner.ReceiveChat($"{Name} has locked in the rental fee.", ChatType.System);
+
+            Enqueue(p);
+        }
+
+        public void ItemRentalLockItem()
+        {
+            S.ItemRentalLock p = new S.ItemRentalLock { Success = false, GoldLocked = false, ItemLocked = false };
+
+            if (ItemRentalDepositedItem != null)
+            {
+                ItemRentalItemLocked = true;
+                p.ItemLocked = true;
+                p.Success = true;
+
+                ItemRentalPartner.Enqueue(new S.ItemRentalPartnerLock { ItemLocked = ItemRentalItemLocked });
+            }
+
+            if (ItemRentalItemLocked && ItemRentalPartner.ItemRentalFeeLocked)
+                Enqueue(new S.CanConfirmItemRental());
+            else if (ItemRentalItemLocked && !ItemRentalPartner.ItemRentalFeeLocked)
+                ItemRentalPartner.ReceiveChat($"{Name} has locked in the rental item.", ChatType.System);
+
+
+            Enqueue(p);
+        }
+
+        private void ItemRentalRemoveLocks()
+        {
+            ItemRentalFeeLocked = false;
+            ItemRentalItemLocked = false;
+
+            if (ItemRentalPartner == null)
+                return;
+
+            ItemRentalPartner.ItemRentalFeeLocked = false;
+            ItemRentalPartner.ItemRentalItemLocked = false;
+        }
+
+        public void ConfirmItemRental()
+        {
+            if (ItemRentalPartner == null)
+            {
+                CancelItemRental();
+                return;
+            }
+
+            if (Info.RentedItems.Count >= 3)
+            {
+                CancelItemRental();
+                return;
+            }
+
+            if (ItemRentalPartner.Info.HasRentedItem)
+            {
+                CancelItemRental();
+                return;
+            }
+
+            if (ItemRentalDepositedItem == null)
+                return;
+
+            if (ItemRentalPartner.ItemRentalFeeAmount <= 0)
+                return;
+
+            if (ItemRentalDepositedItem.Info.Bind.HasFlag(BindMode.UnableToRent))
+                return;
+
+            if (ItemRentalDepositedItem.RentalInformation != null &&
+                ItemRentalDepositedItem.RentalInformation.BindingFlags.HasFlag(BindMode.UnableToRent))
+                return;
+
+            if (!Functions.InRange(ItemRentalPartner.CurrentLocation, CurrentLocation, Globals.DataRange)
+                || ItemRentalPartner.CurrentMap != CurrentMap || !Functions.FacingEachOther(Direction, CurrentLocation,
+                    ItemRentalPartner.Direction, ItemRentalPartner.CurrentLocation))
+            {
+                CancelItemRental();
+                return;
+            }
+
+            if (!ItemRentalItemLocked && !ItemRentalPartner.ItemRentalFeeLocked)
+                return;
+
+            if (!ItemRentalPartner.CanGainItem(ItemRentalDepositedItem))
+            {
+                ReceiveChat($"{ItemRentalPartner.Name} is unable to receive the item.", ChatType.System);
+                Enqueue(new S.CancelItemRental());
+
+                ItemRentalPartner.ReceiveChat("Unable to accept the rental item.", ChatType.System);
+                ItemRentalPartner.Enqueue(new S.CancelItemRental());
+
+                return;
+            }
+
+            if (!CanGainGold(ItemRentalPartner.ItemRentalFeeAmount))
+            {
+                ReceiveChat("You are unable to receive any more gold.", ChatType.System);
+                Enqueue(new S.CancelItemRental());
+
+                ItemRentalPartner.ReceiveChat($"{Name} is unable to receive any more gold.", ChatType.System);
+                ItemRentalPartner.Enqueue(new S.CancelItemRental());
+
+                return;
+            }
+
+            var item = ItemRentalDepositedItem;
+            item.RentalInformation = new RentalInformation
+            {
+                OwnerName = Name,
+                ExpiryDate = DateTime.Now.AddDays(ItemRentalPeriodLength),
+                BindingFlags = BindMode.DontDrop | BindMode.DontStore | BindMode.DontSell | BindMode.DontTrade | BindMode.UnableToRent | BindMode.DontUpgrade | BindMode.UnableToDisassemble
+            };
+
+            var itemRentalInformation = new ItemRentalInformation
+            {
+                ItemId = item.UniqueID,
+                ItemName = item.FriendlyName,
+                RentingPlayerName = ItemRentalPartner.Name,
+                ItemReturnDate = item.RentalInformation.ExpiryDate,
+                
+            };
+
+            Info.RentedItems.Add(itemRentalInformation);
+            ItemRentalDepositedItem = null;
+
+            ItemRentalPartner.GainItem(item);
+            ItemRentalPartner.Info.HasRentedItem = true;
+            ItemRentalPartner.ReceiveChat($"You have rented {item.FriendlyName} from {Name} until {item.RentalInformation.ExpiryDate}", ChatType.System);
+
+            GainGold(ItemRentalPartner.ItemRentalFeeAmount);
+            ReceiveChat($"Received {ItemRentalPartner.ItemRentalFeeAmount} gold for item rental.", ChatType.System);
+            ItemRentalPartner.ItemRentalFeeAmount = 0;
+
+            Enqueue(new S.ConfirmItemRental());
+            ItemRentalPartner.Enqueue(new S.ConfirmItemRental());
+
+            ItemRentalRemoveLocks();
+
+            ItemRentalPartner.ItemRentalPartner = null;
+            ItemRentalPartner = null;
+        }
+		#region Hero
+
+        public void NewHero(string name, MirGender gender, MirClass _class)
+        {
+            if (Info.Inventory.Where(ivt => ivt == null).Count() == 0)
+            {
+                ReceiveChat("请先清理背包", ChatType.System);
+                return;
+            }
+
+            if (Level < 20)
+            {
+                ReceiveChat("20级以上才可以领英雄", ChatType.System);
+                return;
+            }
+            if (Info.Heroes.Count >= Info.MaxHeroCount)
+            {
+                ReceiveChat("英雄已满请先删除不需要的英雄", ChatType.System);
+                return;
+            }
+            var heroOrbInfo = Envir.GetItemInfo(Settings.HeroOrb);
+            var orb = Envir.CreateFreshItem(heroOrbInfo);
+            var heroInfo = new HeroInfo()
+            {
+                CharacterIndex = Info.Index,
+                Gender = gender,
+                Class = _class,
+                Name = name,
+                Grade = (byte)(SMain.Envir.Random.Next(5) + 6),
+                Level = 1,
+                Hair = (byte)SMain.Envir.Random.Next(0, 9),
+                HeroOrbId = orb.UniqueID
+            };
+            
+            using (var ctx = new DataContext())
+            {
+                ctx.HeroInfos.Add(heroInfo);
+                ctx.SaveChanges();
+                foreach (var item in heroInfo.Equipment)
+                {
+                    ctx.HeroEquipmentItems.Add(new HeroEquipmentItem() {HeroIndex = heroInfo.Index});
+                }
+                foreach (var item in heroInfo.Inventory)
+                {
+                    ctx.HeroInventoryItems.Add(new HeroInventoryItem() {HeroIndex = heroInfo.Index});
+                }
+                ctx.SaveChanges();
+            }
+            //Info.Heroes.Add(heroInfo);
+            //Info.Hero = heroInfo;
+            
+            GainItem(orb);
+            ReceiveChat("你已成功召唤了一个新英雄", ChatType.System);
+        }
+
+        public void SummonHero()
+        {
+            if (Info.Heroes.Count == 0)
+            {
+                ReceiveChat("你没有英雄", ChatType.System);
+                return;
+            }
+            if (Hero != null)
+            {
+                ReceiveChat("你已经召唤了英雄", ChatType.System);
+                return;
+            }
+            if (HeroSummonTime + 30000 > Envir.Time)
+            {
+                ReceiveChat("目前不能召唤英雄", ChatType.System);
+                return;
+            }
+            Map temp = Envir.GetMap(CurrentMapIndex);
+            if (temp.Info.NoHero)
+            {
+                ReceiveChat("当前地图不允许召唤英雄", ChatType.System);
+                return;
+            }
+            HeroSummonTime = Envir.Time;
+            var heroInfo = Info.Heroes.FirstOrDefault(h => h.Index == Info.CurrentHeroIndex);
+            if (heroInfo != null)
+            {
+                Hero = new HeroObject(this){Info = heroInfo, CurrentLocation = Front};
+                using (var ctx = new DataContext())
+                {
+                    var inventory = ctx.HeroInventoryItems.Include(i => i.UserItem).Include(i => i.UserItem.Info).Where(i => i.HeroIndex == heroInfo.Index).ToList();
+                    Hero.Info.Inventory = inventory.Select(i => i.UserItem).ToArray();
+                    var equipment = ctx.HeroEquipmentItems.Include(i => i.UserItem).Include(i => i.UserItem.Info).Where(i => i.HeroIndex == heroInfo.Index).ToList();
+                    Hero.Info.Equipment = equipment.Select(i => i.UserItem).ToArray();
+                }
+                Hero.RefreshStats();
+                CurrentMap.AddObject(Hero);
+                Hero.Spawned();
+            }
+        }
+
+        public void DismissHero()
+        {
+            if (Hero != null)
+            {
+                if (HeroSummonTime + 30000 > Envir.Time)
+                {
+                    ReceiveChat("目前不能解散英雄", ChatType.System);
+                    return;
+                }
+                HeroSummonTime = Envir.Time;
+                CurrentMap.RemoveObject(Hero);
+                Hero.Despawn();
+                Hero = null;
+            }
+        }
+
+        public override bool IsAttackTarget(HeroObject attacker)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override int Attacked(HeroObject attacker, int damage, DefenceType type = DefenceType.ACAgility, bool damageWeapon = true)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override bool IsFriendlyTarget(HeroObject ally)
+        {
+            throw new NotImplementedException();
+        }
+
+        #endregion
+    }
+
 }
 

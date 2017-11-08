@@ -108,7 +108,7 @@
             this.tabControl1.Location = new System.Drawing.Point(174, 38);
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
-            this.tabControl1.Size = new System.Drawing.Size(602, 235);
+            this.tabControl1.Size = new System.Drawing.Size(692, 265);
             this.tabControl1.TabIndex = 16;
             // 
             // tabPage1
@@ -117,9 +117,9 @@
             this.tabPage1.Location = new System.Drawing.Point(4, 22);
             this.tabPage1.Name = "tabPage1";
             this.tabPage1.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage1.Size = new System.Drawing.Size(594, 209);
+            this.tabPage1.Size = new System.Drawing.Size(684, 239);
             this.tabPage1.TabIndex = 0;
-            this.tabPage1.Text = "Info";
+            this.tabPage1.Text = "信息";
             this.tabPage1.UseVisualStyleBackColor = true;
             // 
             // MonsterInfoPanel
@@ -184,28 +184,28 @@
             this.MonsterInfoPanel.Enabled = false;
             this.MonsterInfoPanel.Location = new System.Drawing.Point(3, 6);
             this.MonsterInfoPanel.Name = "MonsterInfoPanel";
-            this.MonsterInfoPanel.Size = new System.Drawing.Size(585, 200);
+            this.MonsterInfoPanel.Size = new System.Drawing.Size(675, 230);
             this.MonsterInfoPanel.TabIndex = 11;
             // 
             // UndeadCheckBox
             // 
             this.UndeadCheckBox.AutoSize = true;
-            this.UndeadCheckBox.Location = new System.Drawing.Point(353, 174);
+            this.UndeadCheckBox.Location = new System.Drawing.Point(320, 195);
             this.UndeadCheckBox.Name = "UndeadCheckBox";
-            this.UndeadCheckBox.Size = new System.Drawing.Size(60, 16);
+            this.UndeadCheckBox.Size = new System.Drawing.Size(48, 16);
             this.UndeadCheckBox.TabIndex = 88;
-            this.UndeadCheckBox.Text = "Undead";
+            this.UndeadCheckBox.Text = "不死";
             this.UndeadCheckBox.UseVisualStyleBackColor = true;
             this.UndeadCheckBox.CheckedChanged += new System.EventHandler(this.UndeadCheckBox_CheckedChanged);
             // 
             // AutoRevCheckBox
             // 
             this.AutoRevCheckBox.AutoSize = true;
-            this.AutoRevCheckBox.Location = new System.Drawing.Point(353, 152);
+            this.AutoRevCheckBox.Location = new System.Drawing.Point(320, 168);
             this.AutoRevCheckBox.Name = "AutoRevCheckBox";
             this.AutoRevCheckBox.Size = new System.Drawing.Size(72, 16);
             this.AutoRevCheckBox.TabIndex = 87;
-            this.AutoRevCheckBox.Text = "Auto Rev";
+            this.AutoRevCheckBox.Text = "主动攻击";
             this.AutoRevCheckBox.UseVisualStyleBackColor = true;
             this.AutoRevCheckBox.CheckedChanged += new System.EventHandler(this.AutoRevCheckBox_CheckedChanged);
             // 
@@ -213,7 +213,7 @@
             // 
             this.ImageComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.ImageComboBox.FormattingEnabled = true;
-            this.ImageComboBox.Location = new System.Drawing.Point(271, 28);
+            this.ImageComboBox.Location = new System.Drawing.Point(271, 33);
             this.ImageComboBox.Name = "ImageComboBox";
             this.ImageComboBox.Size = new System.Drawing.Size(128, 20);
             this.ImageComboBox.Sorted = true;
@@ -223,15 +223,15 @@
             // label10
             // 
             this.label10.AutoSize = true;
-            this.label10.Location = new System.Drawing.Point(226, 31);
+            this.label10.Location = new System.Drawing.Point(224, 36);
             this.label10.Name = "label10";
-            this.label10.Size = new System.Drawing.Size(41, 12);
+            this.label10.Size = new System.Drawing.Size(35, 12);
             this.label10.TabIndex = 86;
-            this.label10.Text = "Image:";
+            this.label10.Text = "图片:";
             // 
             // CoolEyeTextBox
             // 
-            this.CoolEyeTextBox.Location = new System.Drawing.Point(502, 77);
+            this.CoolEyeTextBox.Location = new System.Drawing.Point(443, 85);
             this.CoolEyeTextBox.MaxLength = 3;
             this.CoolEyeTextBox.Name = "CoolEyeTextBox";
             this.CoolEyeTextBox.Size = new System.Drawing.Size(30, 21);
@@ -241,7 +241,7 @@
             // label12
             // 
             this.label12.AutoSize = true;
-            this.label12.Location = new System.Drawing.Point(444, 79);
+            this.label12.Location = new System.Drawing.Point(378, 88);
             this.label12.Name = "label12";
             this.label12.Size = new System.Drawing.Size(59, 12);
             this.label12.TabIndex = 84;
@@ -250,28 +250,28 @@
             // CanTameCheckBox
             // 
             this.CanTameCheckBox.AutoSize = true;
-            this.CanTameCheckBox.Location = new System.Drawing.Point(256, 174);
+            this.CanTameCheckBox.Location = new System.Drawing.Point(244, 195);
             this.CanTameCheckBox.Name = "CanTameCheckBox";
             this.CanTameCheckBox.Size = new System.Drawing.Size(72, 16);
             this.CanTameCheckBox.TabIndex = 82;
-            this.CanTameCheckBox.Text = "Can Tame";
+            this.CanTameCheckBox.Text = "可以驯服";
             this.CanTameCheckBox.UseVisualStyleBackColor = true;
             this.CanTameCheckBox.CheckedChanged += new System.EventHandler(this.CanTameCheckBox_CheckedChanged);
             // 
             // CanPushCheckBox
             // 
             this.CanPushCheckBox.AutoSize = true;
-            this.CanPushCheckBox.Location = new System.Drawing.Point(256, 152);
+            this.CanPushCheckBox.Location = new System.Drawing.Point(244, 168);
             this.CanPushCheckBox.Name = "CanPushCheckBox";
             this.CanPushCheckBox.Size = new System.Drawing.Size(72, 16);
             this.CanPushCheckBox.TabIndex = 81;
-            this.CanPushCheckBox.Text = "Can Push";
+            this.CanPushCheckBox.Text = "可以推动";
             this.CanPushCheckBox.UseVisualStyleBackColor = true;
             this.CanPushCheckBox.CheckedChanged += new System.EventHandler(this.CanPushCheckBox_CheckedChanged);
             // 
             // ViewRangeTextBox
             // 
-            this.ViewRangeTextBox.Location = new System.Drawing.Point(430, 53);
+            this.ViewRangeTextBox.Location = new System.Drawing.Point(443, 58);
             this.ViewRangeTextBox.MaxLength = 3;
             this.ViewRangeTextBox.Name = "ViewRangeTextBox";
             this.ViewRangeTextBox.Size = new System.Drawing.Size(30, 21);
@@ -281,15 +281,15 @@
             // label33
             // 
             this.label33.AutoSize = true;
-            this.label33.Location = new System.Drawing.Point(356, 55);
+            this.label33.Location = new System.Drawing.Point(378, 62);
             this.label33.Name = "label33";
-            this.label33.Size = new System.Drawing.Size(71, 12);
+            this.label33.Size = new System.Drawing.Size(59, 12);
             this.label33.TabIndex = 80;
-            this.label33.Text = "View Range:";
+            this.label33.Text = "观察范围:";
             // 
             // LightTextBox
             // 
-            this.LightTextBox.Location = new System.Drawing.Point(320, 52);
+            this.LightTextBox.Location = new System.Drawing.Point(342, 58);
             this.LightTextBox.MaxLength = 3;
             this.LightTextBox.Name = "LightTextBox";
             this.LightTextBox.Size = new System.Drawing.Size(30, 21);
@@ -299,15 +299,15 @@
             // label9
             // 
             this.label9.AutoSize = true;
-            this.label9.Location = new System.Drawing.Point(281, 54);
+            this.label9.Location = new System.Drawing.Point(301, 62);
             this.label9.Name = "label9";
-            this.label9.Size = new System.Drawing.Size(41, 12);
+            this.label9.Size = new System.Drawing.Size(35, 12);
             this.label9.TabIndex = 76;
-            this.label9.Text = "Light:";
+            this.label9.Text = "灯光:";
             // 
             // ExperienceTextBox
             // 
-            this.ExperienceTextBox.Location = new System.Drawing.Point(234, 76);
+            this.ExperienceTextBox.Location = new System.Drawing.Point(241, 85);
             this.ExperienceTextBox.MaxLength = 10;
             this.ExperienceTextBox.Name = "ExperienceTextBox";
             this.ExperienceTextBox.Size = new System.Drawing.Size(72, 21);
@@ -317,15 +317,15 @@
             // label7
             // 
             this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(165, 78);
+            this.label7.Location = new System.Drawing.Point(200, 88);
             this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(71, 12);
+            this.label7.Size = new System.Drawing.Size(35, 12);
             this.label7.TabIndex = 74;
-            this.label7.Text = "Experience:";
+            this.label7.Text = "经验:";
             // 
             // MSpeedTextBox
             // 
-            this.MSpeedTextBox.Location = new System.Drawing.Point(210, 172);
+            this.MSpeedTextBox.Location = new System.Drawing.Point(198, 193);
             this.MSpeedTextBox.MaxLength = 5;
             this.MSpeedTextBox.Name = "MSpeedTextBox";
             this.MSpeedTextBox.Size = new System.Drawing.Size(40, 21);
@@ -335,15 +335,15 @@
             // label6
             // 
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(133, 174);
+            this.label6.Location = new System.Drawing.Point(133, 196);
             this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(71, 12);
+            this.label6.Size = new System.Drawing.Size(59, 12);
             this.label6.TabIndex = 72;
-            this.label6.Text = "Move Speed:";
+            this.label6.Text = "移动速度:";
             // 
             // ASpeedTextBox
             // 
-            this.ASpeedTextBox.Location = new System.Drawing.Point(87, 172);
+            this.ASpeedTextBox.Location = new System.Drawing.Point(87, 193);
             this.ASpeedTextBox.MaxLength = 5;
             this.ASpeedTextBox.Name = "ASpeedTextBox";
             this.ASpeedTextBox.Size = new System.Drawing.Size(40, 21);
@@ -353,15 +353,15 @@
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(6, 174);
+            this.label5.Location = new System.Drawing.Point(16, 196);
             this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(83, 12);
+            this.label5.Size = new System.Drawing.Size(65, 12);
             this.label5.TabIndex = 70;
-            this.label5.Text = "Attack Speed:";
+            this.label5.Text = "攻击速度 :";
             // 
             // LevelTextBox
             // 
-            this.LevelTextBox.Location = new System.Drawing.Point(245, 52);
+            this.LevelTextBox.Location = new System.Drawing.Point(265, 58);
             this.LevelTextBox.MaxLength = 3;
             this.LevelTextBox.Name = "LevelTextBox";
             this.LevelTextBox.Size = new System.Drawing.Size(30, 21);
@@ -371,15 +371,15 @@
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(203, 55);
+            this.label4.Location = new System.Drawing.Point(224, 61);
             this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(41, 12);
+            this.label4.Size = new System.Drawing.Size(35, 12);
             this.label4.TabIndex = 68;
-            this.label4.Text = "Level:";
+            this.label4.Text = "等级:";
             // 
             // EffectTextBox
             // 
-            this.EffectTextBox.Location = new System.Drawing.Point(167, 52);
+            this.EffectTextBox.Location = new System.Drawing.Point(167, 58);
             this.EffectTextBox.MaxLength = 3;
             this.EffectTextBox.Name = "EffectTextBox";
             this.EffectTextBox.Size = new System.Drawing.Size(30, 21);
@@ -389,15 +389,15 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(123, 55);
+            this.label2.Location = new System.Drawing.Point(122, 61);
             this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(47, 12);
+            this.label2.Size = new System.Drawing.Size(35, 12);
             this.label2.TabIndex = 66;
-            this.label2.Text = "Effect:";
+            this.label2.Text = "效果:";
             // 
             // AITextBox
             // 
-            this.AITextBox.Location = new System.Drawing.Point(87, 52);
+            this.AITextBox.Location = new System.Drawing.Point(85, 58);
             this.AITextBox.MaxLength = 3;
             this.AITextBox.Name = "AITextBox";
             this.AITextBox.Size = new System.Drawing.Size(30, 21);
@@ -407,7 +407,7 @@
             // label8
             // 
             this.label8.AutoSize = true;
-            this.label8.Location = new System.Drawing.Point(61, 55);
+            this.label8.Location = new System.Drawing.Point(56, 61);
             this.label8.Name = "label8";
             this.label8.Size = new System.Drawing.Size(23, 12);
             this.label8.TabIndex = 64;
@@ -415,8 +415,8 @@
             // 
             // AgilityTextBox
             // 
-            this.AgilityTextBox.Location = new System.Drawing.Point(176, 148);
-            this.AgilityTextBox.MaxLength = 3;
+            this.AgilityTextBox.Location = new System.Drawing.Point(198, 166);
+            this.AgilityTextBox.MaxLength = 5;
             this.AgilityTextBox.Name = "AgilityTextBox";
             this.AgilityTextBox.Size = new System.Drawing.Size(30, 21);
             this.AgilityTextBox.TabIndex = 20;
@@ -425,16 +425,16 @@
             // label26
             // 
             this.label26.AutoSize = true;
-            this.label26.Location = new System.Drawing.Point(133, 150);
+            this.label26.Location = new System.Drawing.Point(151, 169);
             this.label26.Name = "label26";
-            this.label26.Size = new System.Drawing.Size(53, 12);
+            this.label26.Size = new System.Drawing.Size(41, 12);
             this.label26.TabIndex = 58;
-            this.label26.Text = "Agility:";
+            this.label26.Text = "敏捷 :";
             // 
             // AccuracyTextBox
             // 
-            this.AccuracyTextBox.Location = new System.Drawing.Point(87, 148);
-            this.AccuracyTextBox.MaxLength = 3;
+            this.AccuracyTextBox.Location = new System.Drawing.Point(87, 166);
+            this.AccuracyTextBox.MaxLength = 5;
             this.AccuracyTextBox.Name = "AccuracyTextBox";
             this.AccuracyTextBox.Size = new System.Drawing.Size(30, 21);
             this.AccuracyTextBox.TabIndex = 19;
@@ -443,15 +443,15 @@
             // label27
             // 
             this.label27.AutoSize = true;
-            this.label27.Location = new System.Drawing.Point(26, 150);
+            this.label27.Location = new System.Drawing.Point(40, 169);
             this.label27.Name = "label27";
-            this.label27.Size = new System.Drawing.Size(59, 12);
+            this.label27.Size = new System.Drawing.Size(41, 12);
             this.label27.TabIndex = 56;
-            this.label27.Text = "Accuracy:";
+            this.label27.Text = "准确 :";
             // 
             // HPTextBox
             // 
-            this.HPTextBox.Location = new System.Drawing.Point(87, 76);
+            this.HPTextBox.Location = new System.Drawing.Point(85, 85);
             this.HPTextBox.MaxLength = 10;
             this.HPTextBox.Name = "HPTextBox";
             this.HPTextBox.Size = new System.Drawing.Size(72, 21);
@@ -461,7 +461,7 @@
             // label25
             // 
             this.label25.AutoSize = true;
-            this.label25.Location = new System.Drawing.Point(56, 78);
+            this.label25.Location = new System.Drawing.Point(56, 88);
             this.label25.Name = "label25";
             this.label25.Size = new System.Drawing.Size(23, 12);
             this.label25.TabIndex = 52;
@@ -469,8 +469,8 @@
             // 
             // MaxSCTextBox
             // 
-            this.MaxSCTextBox.Location = new System.Drawing.Point(548, 124);
-            this.MaxSCTextBox.MaxLength = 3;
+            this.MaxSCTextBox.Location = new System.Drawing.Point(607, 139);
+            this.MaxSCTextBox.MaxLength = 5;
             this.MaxSCTextBox.Name = "MaxSCTextBox";
             this.MaxSCTextBox.Size = new System.Drawing.Size(30, 21);
             this.MaxSCTextBox.TabIndex = 18;
@@ -479,177 +479,177 @@
             // label22
             // 
             this.label22.AutoSize = true;
-            this.label22.Location = new System.Drawing.Point(493, 126);
+            this.label22.Location = new System.Drawing.Point(542, 142);
             this.label22.Name = "label22";
-            this.label22.Size = new System.Drawing.Size(47, 12);
+            this.label22.Size = new System.Drawing.Size(59, 12);
             this.label22.TabIndex = 50;
-            this.label22.Text = "Max SC:";
+            this.label22.Text = "最大道术:";
             // 
             // MinSCTextBox
             // 
-            this.MinSCTextBox.Location = new System.Drawing.Point(457, 124);
-            this.MinSCTextBox.MaxLength = 3;
+            this.MinSCTextBox.Location = new System.Drawing.Point(520, 108);
+            this.MinSCTextBox.MaxLength = 5;
             this.MinSCTextBox.Name = "MinSCTextBox";
-            this.MinSCTextBox.Size = new System.Drawing.Size(30, 21);
+            this.MinSCTextBox.Size = new System.Drawing.Size(50, 20);
             this.MinSCTextBox.TabIndex = 17;
             this.MinSCTextBox.TextChanged += new System.EventHandler(this.MinSCTextBox_TextChanged);
             // 
             // label23
             // 
             this.label23.AutoSize = true;
-            this.label23.Location = new System.Drawing.Point(405, 126);
+            this.label23.Location = new System.Drawing.Point(468, 111);
             this.label23.Name = "label23";
-            this.label23.Size = new System.Drawing.Size(47, 12);
+            this.label23.Size = new System.Drawing.Size(59, 12);
             this.label23.TabIndex = 48;
-            this.label23.Text = "Min SC:";
+            this.label23.Text = "最小道术:";
             // 
             // MaxMCTextBox
             // 
-            this.MaxMCTextBox.Location = new System.Drawing.Point(369, 124);
-            this.MaxMCTextBox.MaxLength = 3;
+            this.MaxMCTextBox.Location = new System.Drawing.Point(409, 134);
+            this.MaxMCTextBox.MaxLength = 5;
             this.MaxMCTextBox.Name = "MaxMCTextBox";
-            this.MaxMCTextBox.Size = new System.Drawing.Size(30, 21);
+            this.MaxMCTextBox.Size = new System.Drawing.Size(50, 20);
             this.MaxMCTextBox.TabIndex = 16;
             this.MaxMCTextBox.TextChanged += new System.EventHandler(this.MaxMCTextBox_TextChanged);
             // 
             // label18
             // 
             this.label18.AutoSize = true;
-            this.label18.Location = new System.Drawing.Point(314, 126);
+            this.label18.Location = new System.Drawing.Point(354, 137);
             this.label18.Name = "label18";
-            this.label18.Size = new System.Drawing.Size(47, 12);
+            this.label18.Size = new System.Drawing.Size(59, 12);
             this.label18.TabIndex = 46;
-            this.label18.Text = "Max MC:";
+            this.label18.Text = "最大魔法:";
             // 
             // MinMCTextBox
             // 
-            this.MinMCTextBox.Location = new System.Drawing.Point(271, 124);
-            this.MinMCTextBox.MaxLength = 3;
+            this.MinMCTextBox.Location = new System.Drawing.Point(409, 108);
+            this.MinMCTextBox.MaxLength = 5;
             this.MinMCTextBox.Name = "MinMCTextBox";
-            this.MinMCTextBox.Size = new System.Drawing.Size(30, 21);
+            this.MinMCTextBox.Size = new System.Drawing.Size(50, 20);
             this.MinMCTextBox.TabIndex = 15;
             this.MinMCTextBox.TextChanged += new System.EventHandler(this.MinMCTextBox_TextChanged);
             // 
             // label19
             // 
             this.label19.AutoSize = true;
-            this.label19.Location = new System.Drawing.Point(219, 126);
+            this.label19.Location = new System.Drawing.Point(357, 111);
             this.label19.Name = "label19";
-            this.label19.Size = new System.Drawing.Size(47, 12);
+            this.label19.Size = new System.Drawing.Size(59, 12);
             this.label19.TabIndex = 44;
-            this.label19.Text = "Min MC:";
+            this.label19.Text = "最小魔法:";
             // 
             // MaxDCTextBox
             // 
-            this.MaxDCTextBox.Location = new System.Drawing.Point(176, 124);
-            this.MaxDCTextBox.MaxLength = 3;
+            this.MaxDCTextBox.Location = new System.Drawing.Point(300, 134);
+            this.MaxDCTextBox.MaxLength = 5;
             this.MaxDCTextBox.Name = "MaxDCTextBox";
-            this.MaxDCTextBox.Size = new System.Drawing.Size(30, 21);
+            this.MaxDCTextBox.Size = new System.Drawing.Size(50, 20);
             this.MaxDCTextBox.TabIndex = 14;
             this.MaxDCTextBox.TextChanged += new System.EventHandler(this.MaxDCTextBox_TextChanged);
             // 
             // label20
             // 
             this.label20.AutoSize = true;
-            this.label20.Location = new System.Drawing.Point(123, 126);
+            this.label20.Location = new System.Drawing.Point(250, 137);
             this.label20.Name = "label20";
-            this.label20.Size = new System.Drawing.Size(47, 12);
+            this.label20.Size = new System.Drawing.Size(59, 12);
             this.label20.TabIndex = 42;
-            this.label20.Text = "Max DC:";
+            this.label20.Text = "最大攻击:";
             // 
             // MinDCTextBox
             // 
-            this.MinDCTextBox.Location = new System.Drawing.Point(87, 124);
-            this.MinDCTextBox.MaxLength = 3;
+            this.MinDCTextBox.Location = new System.Drawing.Point(300, 108);
+            this.MinDCTextBox.MaxLength = 5;
             this.MinDCTextBox.Name = "MinDCTextBox";
-            this.MinDCTextBox.Size = new System.Drawing.Size(30, 21);
+            this.MinDCTextBox.Size = new System.Drawing.Size(50, 20);
             this.MinDCTextBox.TabIndex = 13;
             this.MinDCTextBox.TextChanged += new System.EventHandler(this.MinDCTextBox_TextChanged);
             // 
             // label21
             // 
             this.label21.AutoSize = true;
-            this.label21.Location = new System.Drawing.Point(36, 130);
+            this.label21.Location = new System.Drawing.Point(253, 111);
             this.label21.Name = "label21";
-            this.label21.Size = new System.Drawing.Size(47, 12);
+            this.label21.Size = new System.Drawing.Size(59, 12);
             this.label21.TabIndex = 40;
-            this.label21.Text = "Min DC:";
+            this.label21.Text = "最小攻击:";
             // 
             // MaxMACTextBox
             // 
-            this.MaxMACTextBox.Location = new System.Drawing.Point(369, 100);
-            this.MaxMACTextBox.MaxLength = 3;
+            this.MaxMACTextBox.Location = new System.Drawing.Point(200, 134);
+            this.MaxMACTextBox.MaxLength = 5;
             this.MaxMACTextBox.Name = "MaxMACTextBox";
-            this.MaxMACTextBox.Size = new System.Drawing.Size(30, 21);
+            this.MaxMACTextBox.Size = new System.Drawing.Size(50, 20);
             this.MaxMACTextBox.TabIndex = 12;
             this.MaxMACTextBox.TextChanged += new System.EventHandler(this.MaxMACTextBox_TextChanged);
             // 
             // label16
             // 
             this.label16.AutoSize = true;
-            this.label16.Location = new System.Drawing.Point(307, 102);
+            this.label16.Location = new System.Drawing.Point(138, 137);
             this.label16.Name = "label16";
-            this.label16.Size = new System.Drawing.Size(53, 12);
+            this.label16.Size = new System.Drawing.Size(59, 12);
             this.label16.TabIndex = 38;
-            this.label16.Text = "Max MAC:";
+            this.label16.Text = "最大魔防:";
             // 
             // MinMACTextBox
             // 
-            this.MinMACTextBox.Location = new System.Drawing.Point(271, 100);
-            this.MinMACTextBox.MaxLength = 3;
+            this.MinMACTextBox.Location = new System.Drawing.Point(200, 108);
+            this.MinMACTextBox.MaxLength = 5;
             this.MinMACTextBox.Name = "MinMACTextBox";
-            this.MinMACTextBox.Size = new System.Drawing.Size(30, 21);
+            this.MinMACTextBox.Size = new System.Drawing.Size(50, 20);
             this.MinMACTextBox.TabIndex = 11;
             this.MinMACTextBox.TextChanged += new System.EventHandler(this.MinMACTextBox_TextChanged);
             // 
             // label17
             // 
             this.label17.AutoSize = true;
-            this.label17.Location = new System.Drawing.Point(212, 102);
+            this.label17.Location = new System.Drawing.Point(141, 111);
             this.label17.Name = "label17";
-            this.label17.Size = new System.Drawing.Size(53, 12);
+            this.label17.Size = new System.Drawing.Size(59, 12);
             this.label17.TabIndex = 14;
-            this.label17.Text = "Min MAC:";
+            this.label17.Text = "最小魔防:";
             // 
             // MaxACTextBox
             // 
-            this.MaxACTextBox.Location = new System.Drawing.Point(176, 100);
-            this.MaxACTextBox.MaxLength = 3;
+            this.MaxACTextBox.Location = new System.Drawing.Point(87, 134);
+            this.MaxACTextBox.MaxLength = 5;
             this.MaxACTextBox.Name = "MaxACTextBox";
-            this.MaxACTextBox.Size = new System.Drawing.Size(30, 21);
+            this.MaxACTextBox.Size = new System.Drawing.Size(50, 20);
             this.MaxACTextBox.TabIndex = 10;
             this.MaxACTextBox.TextChanged += new System.EventHandler(this.MaxACTextBox_TextChanged);
             // 
             // label15
             // 
             this.label15.AutoSize = true;
-            this.label15.Location = new System.Drawing.Point(123, 102);
+            this.label15.Location = new System.Drawing.Point(34, 137);
             this.label15.Name = "label15";
-            this.label15.Size = new System.Drawing.Size(47, 12);
+            this.label15.Size = new System.Drawing.Size(59, 12);
             this.label15.TabIndex = 34;
-            this.label15.Text = "Max AC:";
+            this.label15.Text = "最大防御:";
             // 
             // MinACTextBox
             // 
-            this.MinACTextBox.Location = new System.Drawing.Point(87, 100);
-            this.MinACTextBox.MaxLength = 3;
+            this.MinACTextBox.Location = new System.Drawing.Point(87, 112);
+            this.MinACTextBox.MaxLength = 5;
             this.MinACTextBox.Name = "MinACTextBox";
-            this.MinACTextBox.Size = new System.Drawing.Size(30, 21);
+            this.MinACTextBox.Size = new System.Drawing.Size(50, 20);
             this.MinACTextBox.TabIndex = 9;
             this.MinACTextBox.TextChanged += new System.EventHandler(this.MinACTextBox_TextChanged);
             // 
             // label14
             // 
             this.label14.AutoSize = true;
-            this.label14.Location = new System.Drawing.Point(37, 102);
+            this.label14.Location = new System.Drawing.Point(22, 115);
             this.label14.Name = "label14";
-            this.label14.Size = new System.Drawing.Size(47, 12);
+            this.label14.Size = new System.Drawing.Size(59, 12);
             this.label14.TabIndex = 32;
-            this.label14.Text = "Min AC:";
+            this.label14.Text = "最小防御:";
             // 
             // MonsterNameTextBox
             // 
-            this.MonsterNameTextBox.Location = new System.Drawing.Point(87, 28);
+            this.MonsterNameTextBox.Location = new System.Drawing.Point(87, 31);
             this.MonsterNameTextBox.Name = "MonsterNameTextBox";
             this.MonsterNameTextBox.Size = new System.Drawing.Size(115, 21);
             this.MonsterNameTextBox.TabIndex = 1;
@@ -658,11 +658,11 @@
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(2, 31);
+            this.label3.Location = new System.Drawing.Point(46, 36);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(83, 12);
+            this.label3.Size = new System.Drawing.Size(35, 12);
             this.label3.TabIndex = 8;
-            this.label3.Text = "Monster Name:";
+            this.label3.Text = "名称:";
             // 
             // MonsterIndexTextBox
             // 
@@ -675,11 +675,11 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(4, 6);
+            this.label1.Location = new System.Drawing.Point(22, 7);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(89, 12);
+            this.label1.Size = new System.Drawing.Size(59, 12);
             this.label1.TabIndex = 4;
-            this.label1.Text = "Monster Index:";
+            this.label1.Text = "怪物索引:";
             // 
             // RemoveButton
             // 
@@ -687,7 +687,7 @@
             this.RemoveButton.Name = "RemoveButton";
             this.RemoveButton.Size = new System.Drawing.Size(75, 21);
             this.RemoveButton.TabIndex = 14;
-            this.RemoveButton.Text = "Remove";
+            this.RemoveButton.Text = "移除";
             this.RemoveButton.UseVisualStyleBackColor = true;
             this.RemoveButton.Click += new System.EventHandler(this.RemoveButton_Click);
             // 
@@ -697,7 +697,7 @@
             this.AddButton.Name = "AddButton";
             this.AddButton.Size = new System.Drawing.Size(75, 21);
             this.AddButton.TabIndex = 13;
-            this.AddButton.Text = "Add";
+            this.AddButton.Text = "增加";
             this.AddButton.UseVisualStyleBackColor = true;
             this.AddButton.Click += new System.EventHandler(this.AddButton_Click);
             // 
@@ -710,17 +710,17 @@
             this.MonsterInfoListBox.Location = new System.Drawing.Point(12, 38);
             this.MonsterInfoListBox.Name = "MonsterInfoListBox";
             this.MonsterInfoListBox.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
-            this.MonsterInfoListBox.Size = new System.Drawing.Size(156, 232);
+            this.MonsterInfoListBox.Size = new System.Drawing.Size(156, 256);
             this.MonsterInfoListBox.TabIndex = 15;
             this.MonsterInfoListBox.SelectedIndexChanged += new System.EventHandler(this.MonsterInfoListBox_SelectedIndexChanged);
             // 
             // PasteMButton
             // 
-            this.PasteMButton.Location = new System.Drawing.Point(220, 11);
+            this.PasteMButton.Location = new System.Drawing.Point(255, 11);
             this.PasteMButton.Name = "PasteMButton";
-            this.PasteMButton.Size = new System.Drawing.Size(44, 21);
+            this.PasteMButton.Size = new System.Drawing.Size(75, 21);
             this.PasteMButton.TabIndex = 22;
-            this.PasteMButton.Text = "Paste";
+            this.PasteMButton.Text = "粘贴";
             this.PasteMButton.UseVisualStyleBackColor = true;
             this.PasteMButton.Click += new System.EventHandler(this.PasteMButton_Click);
             // 
@@ -728,48 +728,48 @@
             // 
             this.CopyMButton.Location = new System.Drawing.Point(174, 11);
             this.CopyMButton.Name = "CopyMButton";
-            this.CopyMButton.Size = new System.Drawing.Size(44, 21);
+            this.CopyMButton.Size = new System.Drawing.Size(75, 21);
             this.CopyMButton.TabIndex = 21;
-            this.CopyMButton.Text = "Copy";
+            this.CopyMButton.Text = "复制";
             this.CopyMButton.UseVisualStyleBackColor = true;
             // 
             // ExportButton
             // 
-            this.ExportButton.Location = new System.Drawing.Point(701, 11);
+            this.ExportButton.Location = new System.Drawing.Point(781, 11);
             this.ExportButton.Name = "ExportButton";
             this.ExportButton.Size = new System.Drawing.Size(75, 21);
             this.ExportButton.TabIndex = 23;
-            this.ExportButton.Text = "Export All";
+            this.ExportButton.Text = "导出所有";
             this.ExportButton.UseVisualStyleBackColor = true;
             this.ExportButton.Click += new System.EventHandler(this.ExportAllButton_Click);
             // 
             // ImportButton
             // 
-            this.ImportButton.Location = new System.Drawing.Point(498, 11);
+            this.ImportButton.Location = new System.Drawing.Point(578, 11);
             this.ImportButton.Name = "ImportButton";
             this.ImportButton.Size = new System.Drawing.Size(75, 21);
             this.ImportButton.TabIndex = 24;
-            this.ImportButton.Text = "Import";
+            this.ImportButton.Text = "导入";
             this.ImportButton.UseVisualStyleBackColor = true;
             this.ImportButton.Click += new System.EventHandler(this.ImportButton_Click);
             // 
             // ExportSelectedButton
             // 
-            this.ExportSelectedButton.Location = new System.Drawing.Point(578, 11);
+            this.ExportSelectedButton.Location = new System.Drawing.Point(658, 11);
             this.ExportSelectedButton.Name = "ExportSelectedButton";
             this.ExportSelectedButton.Size = new System.Drawing.Size(117, 21);
             this.ExportSelectedButton.TabIndex = 25;
-            this.ExportSelectedButton.Text = "Export Selected";
+            this.ExportSelectedButton.Text = "导出选中";
             this.ExportSelectedButton.UseVisualStyleBackColor = true;
             this.ExportSelectedButton.Click += new System.EventHandler(this.ExportSelected_Click);
             // 
             // DropBuilderButton
             // 
-            this.DropBuilderButton.Location = new System.Drawing.Point(415, 11);
+            this.DropBuilderButton.Location = new System.Drawing.Point(495, 11);
             this.DropBuilderButton.Name = "DropBuilderButton";
             this.DropBuilderButton.Size = new System.Drawing.Size(75, 21);
             this.DropBuilderButton.TabIndex = 26;
-            this.DropBuilderButton.Text = "Drop Builder";
+            this.DropBuilderButton.Text = "掉率编辑器";
             this.DropBuilderButton.UseVisualStyleBackColor = true;
             this.DropBuilderButton.Click += new System.EventHandler(this.DropBuilderButton_Click);
             // 
@@ -777,7 +777,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(788, 284);
+            this.ClientSize = new System.Drawing.Size(878, 314);
             this.Controls.Add(this.DropBuilderButton);
             this.Controls.Add(this.ExportSelectedButton);
             this.Controls.Add(this.ImportButton);

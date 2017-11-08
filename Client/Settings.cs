@@ -39,6 +39,7 @@ namespace Client
                             NPCPath = @".\Data\NPC\",
                             CArmourPath = @".\Data\CArmour\",
                             CWeaponPath = @".\Data\CWeapon\",
+							CWeaponEffectPath = @".\Data\CWeaponEffect\",
                             CHairPath = @".\Data\CHair\",
                             AArmourPath = @".\Data\AArmour\",
                             AWeaponPath = @".\Data\AWeapon\",
@@ -68,12 +69,19 @@ namespace Client
         public static bool FPSCap = true;
         public static int MaxFPS = 100;
         public static int Resolution = 1024;
-        public static bool DebugMode = true;
+        public static bool DebugMode = false;
 
         //Network
+#if DEBUG
         public static bool UseConfig = true;
         public static string IPAddress = "127.0.0.1";
         public static int Port = 7000;
+#else
+        public static bool UseConfig = false;
+        public static string IPAddress = "118.193.132.86";
+        public static int Port = 23333;
+#endif
+
         public const int TimeOut = 5000;
 
         //Sound
@@ -112,9 +120,13 @@ namespace Client
             }
         }
 
+        public static int HeroHpRate { get; set; }
+        public static int HeroMpRate { get; set; }
+
         //Game
         public static string AccountID = "",
                              Password = "";
+
         public static bool
             SkillMode = false,
             SkillBar = true,
@@ -127,7 +139,8 @@ namespace Client
             TransparentChat = false,
             DuraView = false,
             DisplayDamage = true,
-            TargetDead = false;
+            TargetDead = false,
+            ExpandedBuffWindow = true;
 
         public static int[,] SkillbarLocation = new int[2, 2] { { 0, 0 }, { 216, 0 }  };
 
@@ -158,13 +171,13 @@ namespace Client
 
         //AutoPatcher
         public static bool P_Patcher = true;
-        public static string P_Host = @"http://mirfiles.co.uk/mir2/cmir/patch/"; //ftp://212.67.209.184
+        public static string P_Host = @"http://patch.cm2cn.org/"; //ftp://212.67.209.184
         public static string P_PatchFileName = @"PList.gz";
         public static bool P_NeedLogin = false;
-        public static string P_Login = string.Empty;
-        public static string P_Password = string.Empty;
-        public static string P_ServerName = string.Empty;
-        public static string P_BrowserAddress = "http://cm2cn.esy.es/";
+        public static string P_Login = "mir";
+        public static string P_Password = "mir";
+        public static string P_ServerName = "C#中文版";
+        public static string P_BrowserAddress = "http://www.cm2cn.org/";
         public static string P_Client = Application.StartupPath + "\\";
         public static bool P_AutoStart = false;
 
@@ -214,6 +227,7 @@ namespace Client
             TransparentChat = Reader.ReadBoolean("Game", "TransparentChat", TransparentChat);
             DisplayDamage = Reader.ReadBoolean("Game", "DisplayDamage", DisplayDamage);
             TargetDead = Reader.ReadBoolean("Game", "TargetDead", TargetDead);
+            ExpandedBuffWindow = Reader.ReadBoolean("Game", "ExpandedBuffWindow", ExpandedBuffWindow);
             DuraView = Reader.ReadBoolean("Game", "DuraWindow", DuraView);
 
             for (int i = 0; i < SkillbarLocation.Length / 2; i++)
@@ -285,6 +299,7 @@ namespace Client
             Reader.Write("Game", "TransparentChat", TransparentChat);
             Reader.Write("Game", "DisplayDamage", DisplayDamage);
             Reader.Write("Game", "TargetDead", TargetDead);
+            Reader.Write("Game", "ExpandedBuffWindow", ExpandedBuffWindow);
             Reader.Write("Game", "DuraWindow", DuraView);
 
             for (int i = 0; i < SkillbarLocation.Length / 2; i++)
@@ -333,6 +348,7 @@ namespace Client
                 TrackedQuests[i] = Reader.ReadInt32("Q-" + Charname, "Quest-" + i.ToString(), -1);
             }
         }
+
         public static void SaveTrackedQuests(string Charname)
         {
             //Quests

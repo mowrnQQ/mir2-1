@@ -43,8 +43,10 @@ Temporary Items
 .apdisk
 
 # Visual Studio Solution User Options
+.vs/
 Legend of Mir.v11.suo
 Legend of Mir.v12.suo
+.vs/Legend of Mir/v15/.suo
 Legend of Mir.sln.DotSettings.user
 Client/Client.csproj
 /Server/obj
@@ -53,3 +55,12 @@ Client/Client.csproj
 /LibraryEditor/obj
 /Client/obj
 /AutoPatcherAdmin/obj
+
+# NuGet Packages
+*.nupkg
+# The packages folder can be ignored because of Package Restore
+**/packages/*
+# except build/, which is used as an MSBuild target.
+!**/packages/build/
+# Uncomment if necessary however generally it will be regenerated when needed
+#!**/packages/repositories.config

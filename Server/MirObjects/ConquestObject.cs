@@ -161,7 +161,7 @@ namespace Server.MirObjects
         {
             for (int i = 0; i < WallList.Count; i++)
             {
-                WallList[i].Spawn();
+                WallList[i].Spawn(false);
             }
         }
 
@@ -367,32 +367,32 @@ namespace Server.MirObjects
             
             if (StartType != ConquestType.Forced)
             {
-            if (WarIsOn && start > now || finish <= now)
-            {
-                EndWar(Info.Game);
-            }
-            else if (start <= now && finish > now && CheckDay())
-            {
-                if (!WarIsOn)
+                if (WarIsOn && (start > now && finish <= now))
                 {
-                    if (Info.Type == ConquestType.Request)
+                    EndWar(Info.Game);
+                }
+                else if (start <= now && finish > now && CheckDay())
+                {
+                    if (!WarIsOn)
                     {
-                        if (AttackerID != -1)
+                        if (Info.Type == ConquestType.Request)
+                        {
+                            if (AttackerID != -1)
+                            {
+                                GameType = Info.Game;
+                                StartType = Info.Type;
+                                StartWar(Info.Game);
+                            }
+                        }
+                        else
                         {
                             GameType = Info.Game;
                             StartType = Info.Type;
                             StartWar(Info.Game);
                         }
-                    }
-                    else
-                    {
-                        GameType = Info.Game;
-                        StartType = Info.Type;
-                        StartWar(Info.Game);
-                    }
 
+                    }
                 }
-            }
             }
             ScheduleTimer = Envir.Time + Settings.Minute;
         }
@@ -494,7 +494,7 @@ namespace Server.MirObjects
                     {
                         key.ChangeOwner(Guild);
                         ControlPoints[key] = new Dictionary<GuildObject, int>();
-                    }
+            }
                     
                     break;
             }
@@ -506,9 +506,12 @@ namespace Server.MirObjects
                 FlagList[i].UpdateColour();
             }
 
-            UpdatePlayers(Guild);
-            if (tmpPrevious != null) UpdatePlayers(tmpPrevious);
-            NeedSave = true;
+            if (Guild != null)
+            {
+                UpdatePlayers(Guild);
+                if (tmpPrevious != null) UpdatePlayers(tmpPrevious);
+                NeedSave = true;
+            }
         }
 
         public void UpdatePlayers(GuildObject tempGuild)
@@ -550,32 +553,32 @@ namespace Server.MirObjects
         {
             if (Create)
             { 
-                WarEffects.Clear();
+            WarEffects.Clear();
                 for (int y = Info.KingLocation.Y - Info.KingSize; y <= Info.KingLocation.Y + Info.KingSize; y++)
-                {
-                    if (y < 0) continue;
-                    if (y >= ConquestMap.Height) break;
+            {
+                if (y < 0) continue;
+                if (y >= ConquestMap.Height) break;
                     for (int x = Info.KingLocation.X - Info.KingSize; x <= Info.KingLocation.X + Info.KingSize; x += Math.Abs(y - Info.KingLocation.Y) == Info.KingSize ? 1 : Info.KingSize * 2)
+                {
+                    if (x < 0) continue;
+                    if (x >= ConquestMap.Width) break;
+                    if (!ConquestMap.Cells[x, y].Valid) continue;
+
+                    SpellObject spell = new SpellObject
                     {
-                        if (x < 0) continue;
-                        if (x >= ConquestMap.Width) break;
-                        if (!ConquestMap.Cells[x, y].Valid) continue;
+                        ExpireTime = long.MaxValue,
+                        Spell = Spell.TrapHexagon,
+                        TickSpeed = int.MaxValue,
+                        CurrentLocation = new Point(x, y),
+                        CurrentMap = ConquestMap,
+                        Decoration = true
+                    };
 
-                        SpellObject spell = new SpellObject
-                        {
-                            ExpireTime = long.MaxValue,
-                            Spell = Spell.TrapHexagon,
-                            TickSpeed = int.MaxValue,
-                            CurrentLocation = new Point(x, y),
-                            CurrentMap = ConquestMap,
-                            Decoration = true
-                        };
-
-                        ConquestMap.Cells[x, y].Add(spell);
-                        WarEffects.Add(spell);
-                        spell.Spawned();
-                    }
+                    ConquestMap.Cells[x, y].Add(spell);
+                    WarEffects.Add(spell);
+                    spell.Spawned();
                 }
+            }
             }
             else
             {
@@ -682,8 +685,8 @@ namespace Server.MirObjects
                     {
                         int points;
 
-                        for (int i = 0; i < ConquestMap.Players.Count; i++)
-                        {
+                    for (int i = 0; i < ConquestMap.Players.Count; i++)
+                    {
                             if (ConquestMap.Players[i].WarZone && ConquestMap.Players[i].MyGuild != null && !ConquestMap.Players[i].Dead && Functions.InRange(Info.KingLocation, ConquestMap.Players[i].CurrentLocation, Info.KingSize))
                             {
                                 if (StartType == ConquestType.Request && ConquestMap.Players[i].MyGuild.Guildindex != AttackerID) continue;
@@ -712,40 +715,40 @@ namespace Server.MirObjects
                                     {
                                         KingPoints[guild] -= 1;
                                         guild.SendOutputMessage(string.Format("Losing control of {1} {0:P0}", ((double)KingPoints[guild] / MAX_KING_POINTS), Info.Name));
-                                    }
+                                }
                                 }
 
                                 PointsChanged = true;
                             }
+                    }
+
+                    if (PointsChanged)
+                    {
+                        GuildObject tempWinning = Guild;
+                        int tempInt;
+
+                        //Check Scores
+                        for (int i = 0; i < Envir.GuildList.Count; i++)
+                        {
+                                KingPoints.TryGetValue(Envir.GuildList[i], out points);
+                            if (tempWinning != null)
+                                    KingPoints.TryGetValue(tempWinning, out tempInt);
+                            else tempInt = 0;
+
+                            if (points > tempInt)
+                            {
+                                tempWinning = Envir.GuildList[i];
+                            }
                         }
 
-                        if (PointsChanged)
-                        {
-                            GuildObject tempWinning = Guild;
-                            int tempInt;
-
-                            //Check Scores
-                            for (int i = 0; i < Envir.GuildList.Count; i++)
+                        if (tempWinning != Guild)
                             {
-                                KingPoints.TryGetValue(Envir.GuildList[i], out points);
-                                if (tempWinning != null)
-                                    KingPoints.TryGetValue(tempWinning, out tempInt);
-                                else tempInt = 0;
-
-                                if (points > tempInt)
-                                {
-                                    tempWinning = Envir.GuildList[i];
-                                }
-                            }
-
-                            if (tempWinning != Guild)
-                            {
-                                TakeConquest(null, tempWinning);
+                            TakeConquest(null, tempWinning);
 
                                 for (int j = 0; j < ConquestMap.Players.Count; j++)
                                 {
                                     ConquestMap.Players[j].ReceiveChat(string.Format("{0} has captured the hill", tempWinning.Name), ChatType.System);
-                                }
+                    }
                             }
                         }
                     }
@@ -791,7 +794,7 @@ namespace Server.MirObjects
         public void StartWar(ConquestGame type)
         {
             WarIsOn = true;
-        }
+    }
 
         public void EndWar(ConquestGame type)
         {
@@ -1048,7 +1051,7 @@ namespace Server.MirObjects
         }
 
 
-        public void Spawn()
+        public void Spawn(bool repair)
         {
             if (Wall != null) Wall.Despawn();
 
@@ -1067,6 +1070,8 @@ namespace Server.MirObjects
 
             Wall.Spawn(Conquest.ConquestMap, Info.Location);
 
+            if (repair) Health = Wall.MaxHP;
+
             if (Health == 0)
                 Wall.Die();
             else
@@ -1077,23 +1082,27 @@ namespace Server.MirObjects
 
         public uint GetRepairCost()
         {
-            if (Wall == null) return Info.RepairCost;
+            uint cost = 0;
 
-            if (Wall.MaxHP == Wall.HP) return 0;
-
-            return Info.RepairCost / (Wall.MaxHP / (Wall.MaxHP - Wall.HP));
+            if (Wall.MaxHP == Wall.HP) return cost;
+            if (Wall != null)
+            {
+                if (Info.RepairCost != 0)
+                    cost = Info.RepairCost / (Wall.MaxHP / (Wall.MaxHP - Wall.HP));
+            }
+            return cost;
         }
 
         public void Repair()
         {
             if (Wall == null)
             {
-                Spawn();
+                Spawn(true);
                 return;
             }
 
             if (Wall.Dead)
-                Spawn();
+                Spawn(true);
             else
                 Wall.HP = Wall.MaxHP;
 

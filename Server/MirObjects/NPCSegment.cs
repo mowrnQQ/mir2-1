@@ -2,6 +2,7 @@
 using Server.MirEnvir;
 using System;
 using System.Collections.Generic;
+using System.Data.Entity;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
@@ -202,6 +203,25 @@ namespace Server.MirObjects
                         CheckList.Add(new NPCChecks(CheckType.CheckNameList, fileName));
                     break;
 
+                //cant use stored var
+                case "CHECKGUILDNAMELIST":
+                    if (parts.Length < 2) return;
+
+                    quoteMatch = regexQuote.Match(line);
+
+                    listPath = parts[1];
+
+                    if (quoteMatch.Success)
+                        listPath = quoteMatch.Groups[1].Captures[0].Value;
+
+                    fileName = Settings.NameListPath + listPath;
+
+                    sDirectory = Path.GetDirectoryName(fileName);
+                    Directory.CreateDirectory(sDirectory);
+
+                    if (File.Exists(fileName))
+                        CheckList.Add(new NPCChecks(CheckType.CheckGuildNameList, fileName));
+                    break;
                 case "ISADMIN":
                     CheckList.Add(new NPCChecks(CheckType.IsAdmin));
                     break;
@@ -517,6 +537,27 @@ namespace Server.MirObjects
                     break;
 
                 //cant use stored var
+                case "ADDGUILDNAMELIST":
+                    if (parts.Length < 2) return;
+
+                    quoteMatch = regexQuote.Match(line);
+
+                    listPath = parts[1];
+
+                    if (quoteMatch.Success)
+                        listPath = quoteMatch.Groups[1].Captures[0].Value;
+
+                    fileName = Settings.NameListPath + listPath;
+
+                    sDirectory = Path.GetDirectoryName(fileName);
+                    Directory.CreateDirectory(sDirectory);
+
+                    if (!File.Exists(fileName))
+                        File.Create(fileName).Close();
+
+                    acts.Add(new NPCActions(ActionType.AddGuildNameList, fileName));
+                    break;
+                //cant use stored var
                 case "DELNAMELIST":
                     if (parts.Length < 2) return;
 
@@ -537,6 +578,25 @@ namespace Server.MirObjects
                     break;
 
                 //cant use stored var
+                case "DELGUILDNAMELIST":
+                    if (parts.Length < 2) return;
+
+                    quoteMatch = regexQuote.Match(line);
+
+                    listPath = parts[1];
+
+                    if (quoteMatch.Success)
+                        listPath = quoteMatch.Groups[1].Captures[0].Value;
+
+                    fileName = Settings.NameListPath + listPath;
+
+                    sDirectory = Path.GetDirectoryName(fileName);
+                    Directory.CreateDirectory(sDirectory);
+
+                    if (File.Exists(fileName))
+                        acts.Add(new NPCActions(ActionType.DelGuildNameList, fileName));
+                    break;
+                //cant use stored var
                 case "CLEARNAMELIST":
                     if (parts.Length < 2) return;
 
@@ -554,6 +614,25 @@ namespace Server.MirObjects
 
                     if (File.Exists(fileName))
                         acts.Add(new NPCActions(ActionType.ClearNameList, fileName));
+                    break;
+                //cant use stored var
+                case "CLEARGUILDNAMELIST":
+                    if (parts.Length < 2) return;
+
+                    quoteMatch = regexQuote.Match(line);
+
+                    listPath = parts[1];
+
+                    if (quoteMatch.Success)
+                        listPath = quoteMatch.Groups[1].Captures[0].Value;
+
+                    fileName = Settings.NameListPath + listPath;
+
+                    sDirectory = Path.GetDirectoryName(fileName);
+                    Directory.CreateDirectory(sDirectory);
+
+                    if (File.Exists(fileName))
+                        acts.Add(new NPCActions(ActionType.ClearGuildNameList, fileName));
                     break;
 
                 case "GIVEHP":
@@ -936,6 +1015,20 @@ namespace Server.MirObjects
                     if (parts.Length < 3) return;
                     acts.Add(new NPCActions(ActionType.CloseGate, parts[1], parts[2]));
                     break;
+                case "NEWHERO":
+                    if (parts.Length < 4) return;
+                    acts.Add(new NPCActions(ActionType.NewHero, parts[1], parts[2], parts[3]));
+                    break;
+                case "DELETEHERO":
+                    acts.Add(new NPCActions(ActionType.DeleteHero));
+                    break;
+                case "SELECTHERO":
+                    if(parts.Length < 2) return;
+                    acts.Add(new NPCActions(ActionType.SelectHero, parts[1]));
+                    break;
+                case "REVIVEHERO":
+                    acts.Add(new NPCActions(ActionType.ReviveHero));
+                    break;
             }
 
         }
@@ -1256,6 +1349,12 @@ namespace Server.MirObjects
                 case "PARCELAMOUNT":
                     newValue = player.GetMailAwaitingCollectionAmount().ToString();
                     break;
+                case "GUILDNAME":
+                    if (player.MyGuild == null) return "No Guild";
+                    else
+                        newValue = player.MyGuild.Name + " Guild";
+                    break;
+
                 default:
                     newValue = string.Empty;
                     break;
@@ -1887,6 +1986,17 @@ namespace Server.MirObjects
                         failed = !read.Contains(player.Name);
                         break;
 
+                    case CheckType.CheckGuildNameList:
+                        if (!File.Exists(param[0]))
+                        {
+                            failed = true;
+                            break;
+                        }
+                        
+                        read = File.ReadAllLines(param[0]);
+                        failed = player.MyGuild == null || !read.Contains(player.MyGuild.Name);
+                        break;
+
                     case CheckType.IsAdmin:
                         failed = !player.IsGM;
                         break;
@@ -2490,6 +2600,15 @@ namespace Server.MirObjects
 
                         player.Account.Gold -= gold;
                         player.Enqueue(new S.LoseGold { Gold = gold });
+                        if (Settings.UseSQLServer)
+                        {
+                            using (var ctx = new DataContext())
+                            {
+                                ctx.AccountInfos.Attach(player.Account);
+                                ctx.Entry(player.Account).State = EntityState.Modified;
+                                ctx.SaveChanges();
+                            }
+                        }
                         break;
                     case ActionType.GiveGuildGold:
                         if (!uint.TryParse(param[0], out gold)) return;
@@ -2657,7 +2776,7 @@ namespace Server.MirObjects
                     case ActionType.RemovePet:
                         for (int c = player.Pets.Count - 1; c >= 0; c--)
                         {
-                            if (string.Compare(player.Pets[c].Name, param[0], true) == 0) continue;
+                            if (string.Compare(player.Pets[c].Info.Name, param[0], true) != 0) continue;
 
                             player.Pets[c].Die();
                         }
@@ -2681,12 +2800,34 @@ namespace Server.MirObjects
                         }
                         break;
 
+
+                    case ActionType.AddGuildNameList:
+                        tempString = param[0];
+                        if (player.MyGuild == null) break;
+                        if (File.ReadAllLines(tempString).All(t => player.MyGuild.Name != t))
+                        {
+                            using (var line = File.AppendText(tempString))
+                            {
+                                line.WriteLine(player.MyGuild.Name);
+                            }
+                        }
+                        break;
                     case ActionType.DelNameList:
                         tempString = param[0];
                         File.WriteAllLines(tempString, File.ReadLines(tempString).Where(l => l != player.Name).ToList());
                         break;
 
+                    case ActionType.DelGuildNameList:
+                        if (player.MyGuild == null) break;
+                        tempString = param[0];
+                        File.WriteAllLines(tempString, File.ReadLines(tempString).Where(l => l != player.MyGuild.Name).ToList());
+                        break;
                     case ActionType.ClearNameList:
+                        tempString = param[0];
+                        File.WriteAllLines(tempString, new string[] { });
+                        break;
+                    case ActionType.ClearGuildNameList:
+                        if (player.MyGuild == null) break;
                         tempString = param[0];
                         File.WriteAllLines(tempString, new string[] { });
                         break;
@@ -3369,6 +3510,40 @@ namespace Server.MirObjects
                         if (CloseGate == null) return;
                         if (CloseGate.Gate == null) return;
                         CloseGate.Gate.CloseDoor();
+                        break;
+                    case ActionType.NewHero:
+                        var heroName = param[0];
+                        MirGender heroGender;
+                        if (!MirGender.TryParse(param[1], out heroGender)) return;
+                        MirClass heroClass;
+                        if (!MirClass.TryParse(param[2], out heroClass)) return;
+                        if (player.Info.Heroes.Count >= player.Info.MaxHeroCount)
+                        {
+                            player.ReceiveChat("没有空的英雄位", ChatType.System);
+                            return;
+                        }
+                        var heroInfo = new HeroInfo()
+                        {
+                            CharacterIndex = player.Info.Index,
+                            Gender = heroGender,
+                            Class = heroClass,
+                            Name = heroName,
+                            Grade = (byte) (SMain.Envir.Random.Next(5) + 6),
+                        };
+                        using (var ctx = new DataContext())
+                        {
+                            ctx.HeroInfos.Add(heroInfo);
+                            ctx.SaveChanges();
+                        }
+                        player.Info.Heroes.Add(heroInfo);
+                        player.Info.Hero = heroInfo;
+                        player.ReceiveChat("你已成功召唤了一个新英雄", ChatType.System);
+                        break;
+                    case ActionType.DeleteHero:
+                        break;
+                    case ActionType.SelectHero:
+                        break;
+                    case ActionType.ReviveHero:
                         break;
                 }
             }

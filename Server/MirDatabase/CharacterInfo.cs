@@ -152,6 +152,9 @@ namespace Server.MirDatabase
         public UserItem[] Trade = new UserItem[10];
         public UserItem[] QuestInventory = new UserItem[40];
         public UserItem[] Refine = new UserItem[16];
+        public List<ItemRentalInformation> RentedItems = new List<ItemRentalInformation>();
+        public List<ItemRentalInformation> RentedItemsToRemove = new List<ItemRentalInformation>();
+        public bool HasRentedItem;
         public UserItem CurrentRefine = null;
         public long CollectTime { get; set; } = 0;
         public List<UserMagic> Magics = new List<UserMagic>();
@@ -190,6 +193,11 @@ namespace Server.MirDatabase
         public Dictionary<int, int> GSpurchases = new Dictionary<int, int>();
         [NotMapped]
         public int[] Rank = new int[2];//dont save this in db!(and dont send it to clients :p)
+
+        public byte MaxHeroCount { get; set; } = 2;
+        public int CurrentHeroIndex { get; set; }
+        public HeroInfo Hero;
+        public ICollection<HeroInfo> Heroes { get; set; } = new List<HeroInfo>();
 
         public CharacterInfo()
         {
@@ -428,6 +436,15 @@ namespace Server.MirDatabase
                     Friends.Add(new FriendInfo(reader));
             }
 
+            if (Envir.LoadVersion > 75)
+            {
+                count = reader.ReadInt32();
+                for (var i = 0; i < count; i++)
+                    RentedItems.Add(new ItemRentalInformation(reader));
+
+                HasRentedItem = reader.ReadBoolean();
+            }
+
             if (Envir.LoadVersion > 59)
             {
                 Married = reader.ReadInt32();
@@ -447,7 +464,6 @@ namespace Server.MirDatabase
                     GSpurchases.Add(reader.ReadInt32(), reader.ReadInt32());
                 }
             }
-
         }
 
         public void Save(BinaryWriter writer)
@@ -661,40 +677,22 @@ namespace Server.MirDatabase
                         ctx.UserBuffs.Add(userBuff);
                     }
                     ctx.SaveChanges();
-                    ctx.Mails.RemoveRange(ctx.Mails.Where(m => m.CharacterIndex == Index));
-                    foreach (var mailInfo in Mail)
-                    {
-                        var dbMail = ctx.Mails.FirstOrDefault(m => m.MailID == mailInfo.MailID);
-                        if (dbMail == null)
-                        {
-                            ctx.Mails.Add(mailInfo);
-                        }
-                        else
-                        {
-                            ctx.Entry(dbMail).CurrentValues.SetValues(mailInfo);
-                        }
-                    }
+                    ctx.Mails.RemoveRange(ctx.Mails.Where(m => m.RecipientIndex == Index));
                     ctx.SaveChanges();
+                    foreach (MailInfo mail in Mail)
+                        mail.Save(writer);
                     ctx.UserIntelligentCreatures.RemoveRange(
                         ctx.UserIntelligentCreatures.Where(i => i.CharacterIndex == Index));
                     foreach (var userIntelligentCreature in IntelligentCreatures)
                     {
-                        var dbUserIntelligentCreature =
-                            ctx.UserIntelligentCreatures.FirstOrDefault(i => i.Index == userIntelligentCreature.Index);
-                        if (dbUserIntelligentCreature == null)
-                        {
-                            ctx.UserIntelligentCreatures.Add(userIntelligentCreature);
-                        }
-                        else
-                        {
-                            ctx.Entry(dbUserIntelligentCreature).CurrentValues.SetValues(userIntelligentCreature);
-                        }
-                        
+                        userIntelligentCreature.CharacterIndex = Index;
+                        ctx.UserIntelligentCreatures.Add(userIntelligentCreature);
                     }
                     ctx.SaveChanges();
                     ctx.Friends.RemoveRange(ctx.Friends.Where(f => f.CharacterIndex == Index));
                     foreach (var friendInfo in Friends)
                     {
+                        friendInfo.CharacterIndex = Index;
                         ctx.Friends.Add(friendInfo);
                     }
 
@@ -838,6 +836,12 @@ namespace Server.MirDatabase
             for (int i = 0; i < Friends.Count; i++)
                 Friends[i].Save(writer);
 
+            writer.Write(RentedItems.Count);
+            foreach (var rentedItemInformation in RentedItems)
+                rentedItemInformation.Save(writer);
+
+            writer.Write(HasRentedItem);
+
             writer.Write(Married);
             writer.Write(MarriedDate.GetValueOrDefault().ToBinary());
             writer.Write(Mentor);
@@ -893,9 +897,43 @@ namespace Server.MirDatabase
             if (Inventory.Length >= 86) return Inventory.Length;
 
             if (Inventory.Length == 46)
+            {
                 Array.Resize(ref Inventory, Inventory.Length + 8);
+                if (Settings.UseSQLServer)
+                {
+                    using(var ctx = new DataContext())
+                    {
+                        for (int i = 0; i < 8; i++)
+                        {
+                            ctx.Inventories.Add(new InventoryItem()
+                            {
+                                CharacterIndex = Index,
+                                ItemUniqueID = null,
+                            });
+                            ctx.SaveChanges();
+                        }
+                    }
+                }
+            }
             else
+            {
                 Array.Resize(ref Inventory, Inventory.Length + 4);
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        for (int i = 0; i < 4; i++)
+                        {
+                            ctx.Inventories.Add(new InventoryItem()
+                            {
+                                CharacterIndex = Index,
+                                ItemUniqueID = null,
+                            });
+                            ctx.SaveChanges();
+                        }
+                    }
+                }
+            }
 
             return Inventory.Length;
         }
@@ -1063,7 +1101,8 @@ namespace Server.MirDatabase
                                                 OlympicFlame,
                                                 BabySnowMan,
                                                 Frog,
-                                                Monkey;
+                                                Monkey,
+                                                AngryBird;
 
         public IntelligentCreatureType PetType;
 
@@ -1097,6 +1136,7 @@ namespace Server.MirDatabase
             BabySnowMan = new IntelligentCreatureInfo { PetType = IntelligentCreatureType.BabySnowMan, Icon = 509, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11, CanProduceBlackStone = true, Info = "Can pickup items (11x11 auto/semi-auto, 11x11 mouse).", Info1 = "Can produce BlackStones." };
             Frog = new IntelligentCreatureInfo { PetType = IntelligentCreatureType.Frog, Icon = 510, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11, CanProduceBlackStone = true, Info = "Can pickup items (11x11 auto/semi-auto, 11x11 mouse).", Info1 = "Can produce BlackStones." };
             Monkey = new IntelligentCreatureInfo { PetType = IntelligentCreatureType.BabyMonkey, Icon = 511, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11, CanProduceBlackStone = true, Info = "Can pickup items (11x11 auto/semi-auto, 11x11 mouse).", Info1 = "Can produce BlackStones." };
+            AngryBird = new IntelligentCreatureInfo { PetType = IntelligentCreatureType.AngryBird, Icon = 512, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11, CanProduceBlackStone = true, Info = "Can pickup items (11x11 auto/semi-auto, 11x11 mouse).", Info1 = "Can produce BlackStones." };        
         }
 
         public IntelligentCreatureInfo()
@@ -1301,6 +1341,8 @@ namespace Server.MirDatabase
         public BuffType Type { get; set; }
         [NotMapped]
         public MapObject Caster { get; set; }
+
+        public string CasterName { get; set; }
         public bool Visible { get; set; }
         [NotMapped]
         public uint ObjectID { get; set; }

@@ -60,7 +60,7 @@ namespace Server.MirObjects
 
             if (Caster != null && Caster.Node == null) Caster = null;
 
-            if (Envir.Time > ExpireTime || ((Spell == Spell.FireWall || Spell == Spell.Portal || Spell == Spell.ExplosiveTrap || Spell == Spell.Reincarnation) && Caster == null) || (Spell == Spell.TrapHexagon && Target != null) || (Spell == Spell.Trap && Target != null))
+            if (Envir.Time > ExpireTime || ((Spell == Spell.FireWall || Spell == Spell.ExplosiveTrap) && Caster == null) || (Spell == Spell.TrapHexagon && Target != null) || (Spell == Spell.Trap && Target != null))
             {
                 if (Spell == Spell.TrapHexagon && Target != null || Spell == Spell.Trap && Target != null)
                 {
@@ -69,7 +69,7 @@ namespace Server.MirObjects
                     if (Envir.Time < ExpireTime && ob.ShockTime != 0) return;
                 }
 
-                if (Spell == Spell.Reincarnation && Caster != null)
+                if (Spell == Spell.Reincarnation)
                 {
                     Caster.ReincarnationReady = true;
                     Caster.ReincarnationExpireTime = Envir.Time + 6000;
@@ -169,7 +169,21 @@ namespace Server.MirObjects
                     ob.Attacked(Caster, Value, DefenceType.MAC, false);
                     break;
                 case Spell.MapLava:
+                    if (ob is PlayerObject)
+                    {
+                        PlayerObject pOb = (PlayerObject)ob;
+                        if (pOb.Account.AdminAccount && pOb.Observer)
+                            return;
+                    }
+                    break;
                 case Spell.MapLightning:
+                    if (ob is PlayerObject)
+                    {
+                        PlayerObject pOb = (PlayerObject)ob;
+                        if (pOb.Account.AdminAccount && pOb.Observer)
+                            return;
+                    }
+                    break;
                 case Spell.MapQuake1:
                 case Spell.MapQuake2:
                     if (Value == 0) return;
@@ -407,6 +421,21 @@ namespace Server.MirObjects
                     }
                 }
             }
+        }
+
+        public override bool IsAttackTarget(HeroObject attacker)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override int Attacked(HeroObject attacker, int damage, DefenceType type = DefenceType.ACAgility, bool damageWeapon = true)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override bool IsFriendlyTarget(HeroObject ally)
+        {
+            throw new NotSupportedException();
         }
     }
 }

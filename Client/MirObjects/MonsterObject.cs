@@ -38,10 +38,8 @@ namespace Client.MirObjects
                     case Monster.SSabukWall2:
                     case Monster.SSabukWall3:
                         return new Point(-10, 0);
-                        break;
                     case Monster.GiGateEast:
                         return new Point(-45, 7);
-                        break;
                     default:
                         return new Point(0, 0);
                 }
@@ -156,6 +154,7 @@ namespace Client.MirObjects
                 case Monster.BabySnowMan:
                 case Monster.Frog:
                 case Monster.BabyMonkey:
+                case Monster.AngryBird:
                     BodyLibrary = Libraries.Pets[((ushort)BaseImage) - 10000];
                     break;
                 case Monster.SabukGate:
@@ -1011,6 +1010,7 @@ namespace Client.MirObjects
                 case Monster.BabySnowMan:
                 case Monster.Frog:
                 case Monster.BabyMonkey:
+                case Monster.AngryBird:
                     Frames = FrameSet.HelperPets[((ushort)BaseImage) - 10000];
                     break;
                 case Monster.SabukGate:
@@ -1232,8 +1232,8 @@ namespace Client.MirObjects
                 case Monster.BabySnowMan:
                 case Monster.Frog:
                 case Monster.BabyMonkey:
+                case Monster.AngryBird:
                     BodyLibrary = Libraries.Pets[((ushort)BaseImage) - 10000];
-                    break;
                     break;
             }
 
@@ -2956,6 +2956,7 @@ namespace Client.MirObjects
                 case Monster.BabySnowMan:
                 case Monster.Frog:
                 case Monster.BabyMonkey:
+                case Monster.AngryBird:
                     SoundManager.PlaySound(petSound);
                     break;
             }
@@ -3737,6 +3738,7 @@ namespace Client.MirObjects
                 case Monster.BabySnowMan:
                 case Monster.Frog:
                 case Monster.BabyMonkey:
+                case Monster.AngryBird:
                     yOffset = -20;
                     break;
             }
@@ -3809,6 +3811,7 @@ namespace Client.MirObjects
                 case Monster.BabySnowMan:
                 case Monster.Frog:
                 case Monster.BabyMonkey:
+                case Monster.AngryBird:
                     yOffset = 20;
                     break;
             }

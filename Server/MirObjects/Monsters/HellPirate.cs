@@ -55,7 +55,7 @@ namespace Server.MirObjects.Monsters
 
                         ob.Attacked(this, MinDC, DefenceType.Agility);
                         break;
-                    }
+            }
                 }
             }
 
@@ -66,7 +66,7 @@ namespace Server.MirObjects.Monsters
             int damage = GetAttackPower(MinDC, MaxDC);
             if (damage == 0) return;
 
-            Target.Attacked(this, damage, DefenceType.ACAgility);
-        }   
+           Target.Attacked(this, damage, DefenceType.ACAgility);
+        }    
     }
 }

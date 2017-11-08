@@ -464,7 +464,6 @@ namespace Server.MirEnvir
                             break;
                     }
                     
-
                     for (int i = 0; i < Info.Respawns.Count; i++)
                     {
                         MapRespawn info = new MapRespawn(Info.Respawns[i]);
@@ -496,7 +495,7 @@ namespace Server.MirEnvir
                 SMain.Enqueue(ex);
             }
 
-            SMain.Enqueue("Failed to Load Map: " + Info.FileName);
+            SMain.Enqueue("加载地图失败: " + Info.FileName);
             return false;
         }
 
@@ -648,8 +647,7 @@ namespace Server.MirEnvir
                     Point Location;
                     if (Envir.Random.Next(4) == 0)
                     {
-                        Location = player.CurrentLocation;
-                        
+                        Location = player.CurrentLocation;          
                     }
                     else
                         Location = new Point(player.CurrentLocation.X - 10 + Envir.Random.Next(20), player.CurrentLocation.Y - 10 + Envir.Random.Next(20));

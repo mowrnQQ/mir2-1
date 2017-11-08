@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.Entity;
 using System.Drawing;
 using Server.MirDatabase;
 using Server.MirEnvir;
@@ -282,6 +283,17 @@ namespace Server.MirObjects
             //    player.Enqueue(GetInfo());
             //}
         }
+
+        public virtual void Add(HeroObject hero)
+        {
+            hero.Player.Enqueue(GetInfo());
+        }
+
+        public virtual void Remove(HeroObject hero)
+        {
+            hero.Player.Enqueue(new S.ObjectRemove(){ ObjectID = ObjectID});
+        }
+
         public virtual void Remove(MonsterObject monster)
         {
 
@@ -396,12 +408,15 @@ namespace Server.MirObjects
 
         public abstract bool IsAttackTarget(PlayerObject attacker);
         public abstract bool IsAttackTarget(MonsterObject attacker);
+        public abstract bool IsAttackTarget(HeroObject attacker);
         public abstract int Attacked(PlayerObject attacker, int damage, DefenceType type = DefenceType.ACAgility, bool damageWeapon = true);
+        public abstract int Attacked(HeroObject attacker, int damage, DefenceType type = DefenceType.ACAgility, bool damageWeapon = true);
         public abstract int Attacked(MonsterObject attacker, int damage, DefenceType type = DefenceType.ACAgility);
 
         public abstract int Struck(int damage, DefenceType type = DefenceType.ACAgility);
 
         public abstract bool IsFriendlyTarget(PlayerObject ally);
+        public abstract bool IsFriendlyTarget(HeroObject ally);
         public abstract bool IsFriendlyTarget(MonsterObject ally);
 
         public abstract void ReceiveChat(string text, ChatType type);
@@ -485,6 +500,20 @@ namespace Server.MirObjects
                 Buffs[i].Infinite = false;
                 Buffs[i].ExpireTime = Envir.Time;
             }
+            if (Settings.UseSQLServer)
+            {
+                var playerObject = this as PlayerObject;
+                if (playerObject != null)
+                {
+                    var charIndex = playerObject.Info.Index;
+                    using (var ctx = new DataContext())
+                    {
+                        ctx.UserBuffs.RemoveRange(
+                            ctx.UserBuffs.Where(buff => buff.CharacterIndex == charIndex && buff.Type == b));
+                        ctx.SaveChanges();
+                    }
+                }
+            }
         }
 
         public bool CheckStacked()
@@ -521,6 +550,23 @@ namespace Server.MirObjects
             if (effects) Broadcast(new S.ObjectTeleportIn { ObjectID = ObjectID, Type = effectnumber });
             
             BroadcastHealthChange();
+
+            if (this is PlayerObject)
+            {
+                if (Settings.UseSQLServer)
+                {
+                    using (var ctx = new DataContext())
+                    {
+                        var playerObject = this as PlayerObject;
+                        if (playerObject != null)
+                        {
+                            ctx.CharacterInfos.Attach(playerObject.Info);
+                            ctx.Entry(playerObject.Info).State = EntityState.Modified;
+                            ctx.SaveChanges();
+                        }
+                    }
+                }
+            }
             
             return true;
         }
@@ -577,7 +623,7 @@ namespace Server.MirObjects
 
         public void BroadcastHealthChange()
         {
-            if (Race != ObjectType.Player && Race != ObjectType.Monster) return;
+            if (Race != ObjectType.Player && Race != ObjectType.Monster && Race != ObjectType.Hero) return;
 
             byte time = Math.Min(byte.MaxValue, (byte)Math.Max(5, (RevTime - Envir.Time) / 1000));
             Packet p = new S.ObjectHealth { ObjectID = ObjectID, Percent = PercentHealth, Expire = time };

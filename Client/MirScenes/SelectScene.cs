@@ -56,7 +56,7 @@ namespace Client.MirScenes
                     Location = new Point(322, 44),
                     Parent = Background,
                     Size = new Size(155, 17),
-                    Text = "Legend of Mir 2",
+                    Text = "Client",
                     DrawFormat = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter
                 };
             
@@ -208,7 +208,7 @@ namespace Client.MirScenes
                 {
                     Location = new Point(-80, -1),
                     Parent = LastAccessLabel,
-                    Text = "Last Online:",
+                    Text = "上次在线:",
                     Size = new Size(100, 21),
                     DrawFormat = TextFormatFlags.Left | TextFormatFlags.VerticalCenter,
                     Border = true,
@@ -236,9 +236,9 @@ namespace Client.MirScenes
         {
             if (!Libraries.Loaded)
             {
-                MirMessageBox message = new MirMessageBox(string.Format("Please wait, The game is still loading... {0:##0}%", Libraries.Progress / (double)Libraries.Count * 100), MirMessageBoxButtons.Cancel);
+                MirMessageBox message = new MirMessageBox(string.Format("请稍等, 游戏加载中... {0:##0}%", Libraries.Progress / (double)Libraries.Count * 100), MirMessageBoxButtons.Cancel);
 
-                message.BeforeDraw += (o, e) => message.Label.Text = string.Format("Please wait, The game is still loading... {0:##0}%", Libraries.Progress / (double)Libraries.Count * 100);
+                message.BeforeDraw += (o, e) => message.Label.Text = string.Format("请稍等, 游戏加载中... {0:##0}%", Libraries.Progress / (double)Libraries.Count * 100);
 
                 message.AfterDraw += (o, e) =>
                 {
@@ -302,25 +302,25 @@ namespace Client.MirScenes
             switch (p.Result)
             {
                 case 0:
-                    MirMessageBox.Show("Creating new characters is currently disabled.");
+                    MirMessageBox.Show("现在不能新建角色.");
                     _character.Dispose();
                     break;
                 case 1:
-                    MirMessageBox.Show("Your Character Name is not acceptable.");
+                    MirMessageBox.Show("角色名不能被接受.");
                     _character.NameTextBox.SetFocus();
                     break;
                 case 2:
-                    MirMessageBox.Show("The gender you selected does not exist.\n Contact a GM for assistance.");
+                    MirMessageBox.Show("选择的性别不存在.");
                     break;
                 case 3:
-                    MirMessageBox.Show("The class you selected does not exist.\n Contact a GM for assistance.");
+                    MirMessageBox.Show("选择的职业不存在.");
                     break;
                 case 4:
-                    MirMessageBox.Show("You cannot make anymore then " + Globals.MaxCharacterCount + " Characters.");
+                    MirMessageBox.Show("最多只能建 " + Globals.MaxCharacterCount + " 个角色.");
                     _character.Dispose();
                     break;
                 case 5:
-                    MirMessageBox.Show("A Character with this name already exists.");
+                    MirMessageBox.Show("角色名已经被占用.");
                     _character.NameTextBox.SetFocus();
                     break;
             }
@@ -330,7 +330,7 @@ namespace Client.MirScenes
         private void NewCharacter(S.NewCharacterSuccess p)
         {
             _character.Dispose();
-            MirMessageBox.Show("Your character was created successfully.");
+            MirMessageBox.Show("角色创建成功.");
             
             Characters.Insert(0, p.CharInfo);
             _selected = 0;
@@ -341,7 +341,7 @@ namespace Client.MirScenes
         {
             if (_selected < 0 || _selected >= Characters.Count) return;
 
-            MirMessageBox message = new MirMessageBox(string.Format("Are you sure you want to Delete the character {0}?", Characters[_selected].Name), MirMessageBoxButtons.YesNo);
+            MirMessageBox message = new MirMessageBox(string.Format("确定要删除此角色 {0}?", Characters[_selected].Name), MirMessageBoxButtons.YesNo);
             int index = Characters[_selected].Index;
 
             message.YesButton.Click += (o, e) =>
@@ -359,17 +359,17 @@ namespace Client.MirScenes
             switch (p.Result)
             {
                 case 0:
-                    MirMessageBox.Show("Deleting characters is currently disabled.");
+                    MirMessageBox.Show("现在不能删除角色.");
                     break;
                 case 1:
-                    MirMessageBox.Show("The character you selected does not exist.\n Contact a GM for assistance.");
+                    MirMessageBox.Show("你选择的角色不存在.");
                     break;
             }
         }
         private void DeleteCharacter(S.DeleteCharacterSuccess p)
         {
             DeleteCharacterButton.Enabled = true;
-            MirMessageBox.Show("Your character was deleted successfully.");
+            MirMessageBox.Show("角色删除成功.");
 
             for (int i = 0; i < Characters.Count; i++)
                 if (Characters[i].Index == p.CharacterIndex)
@@ -387,9 +387,9 @@ namespace Client.MirScenes
 
             long time = CMain.Time + p.Milliseconds;
 
-            MirMessageBox message = new MirMessageBox(string.Format("You cannot log onto this character for another {0} seconds.", Math.Ceiling(p.Milliseconds/1000M)));
+            MirMessageBox message = new MirMessageBox(string.Format("在 {0} 秒内不能登录此角色.", Math.Ceiling(p.Milliseconds/1000M)));
 
-            message.BeforeDraw += (o, e) => message.Label.Text = string.Format("You cannot log onto this character for another {0} seconds.", Math.Ceiling((time - CMain.Time)/1000M));
+            message.BeforeDraw += (o, e) => message.Label.Text = string.Format("在 {0} 秒内不能登录此角色.", Math.Ceiling((time - CMain.Time)/1000M));
                 
 
             message.AfterDraw += (o, e) =>
@@ -406,7 +406,7 @@ namespace Client.MirScenes
             StartGameButton.Enabled = true;
 
             TimeSpan d = p.ExpiryDate - CMain.Now;
-            MirMessageBox.Show(string.Format("This account is banned.\n\nReason: {0}\nExpiryDate: {1}\nDuration: {2:#,##0} Hours, {3} Minutes, {4} Seconds", p.Reason,
+            MirMessageBox.Show(string.Format("此账号被封.\n\n原因: {0}\n解封时间: {1}\n还有: {2:#,##0} 小时, {3} 分钟, {4} 秒", p.Reason,
                                              p.ExpiryDate, Math.Floor(d.TotalHours), d.Minutes, d.Seconds));
         }
         public void StartGame(S.StartGame p)
@@ -423,16 +423,16 @@ namespace Client.MirScenes
             switch (p.Result)
             {
                 case 0:
-                    MirMessageBox.Show("Starting the game is currently disabled.");
+                    MirMessageBox.Show("现在不能开始游戏.");
                     break;
                 case 1:
-                    MirMessageBox.Show("You are not logged in.");
+                    MirMessageBox.Show("你还没有登录.");
                     break;
                 case 2:
-                    MirMessageBox.Show("Your character could not be found.");
+                    MirMessageBox.Show("没有找到你的角色.");
                     break;
                 case 3:
-                    MirMessageBox.Show("No active map and/or start point found.");
+                    MirMessageBox.Show("没有已激活的地图或者没有出生点.");
                     break;
                 case 4:
                     if (Settings.Resolution == 1024)
@@ -478,7 +478,7 @@ namespace Client.MirScenes
                         break;
                 }
 
-                LastAccessLabel.Text = Characters[_selected].LastAccess == DateTime.MinValue ? "Never" : Characters[_selected].LastAccess.ToString();
+                LastAccessLabel.Text = Characters[_selected].LastAccess == DateTime.MinValue ? "从未" : Characters[_selected].LastAccess.ToString();
                 LastAccessLabel.Visible = true;
                 LastAccessLabelLabel.Visible = true;
                 StartGameButton.Enabled = true;
@@ -517,9 +517,9 @@ namespace Client.MirScenes
             base.Dispose(disposing);
         }
         #endregion
-        public sealed class NewCharacterDialog : MirImageControl
+        public class NewCharacterDialog : MirImageControl
         {
-            private static readonly Regex Reg = new Regex(@"^[A-Za-z0-9]{" + Globals.MinCharacterNameLength + "," + Globals.MaxCharacterNameLength + "}$");
+            private static readonly Regex Reg = new Regex(@"^.{" + Globals.MinCharacterNameLength + "," + Globals.MaxCharacterNameLength + "}$");
 
             public MirImageControl TitleLabel;
             public MirAnimatedControl CharacterDisplay;
@@ -538,8 +538,8 @@ namespace Client.MirScenes
 
             public MirLabel Description;
 
-            private MirClass _class;
-            private MirGender _gender;
+            protected MirClass _class;
+            protected MirGender _gender;
 
             #region Descriptions
             public const string WarriorDescription =
@@ -773,6 +773,10 @@ namespace Client.MirScenes
             }
             private void CharacterNameTextBox_TextChanged(object sender, EventArgs e)
             {
+                var whiteSpacePattern = new Regex(@"\s+");
+                NameTextBox.Text = whiteSpacePattern.Replace(NameTextBox.Text, "");
+                NameTextBox.TextBox.SelectionStart = NameTextBox.Text.Length;
+
                 if (string.IsNullOrEmpty(NameTextBox.Text))
                 {
                     OKButton.Enabled = false;

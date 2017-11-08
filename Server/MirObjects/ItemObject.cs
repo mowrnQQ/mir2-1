@@ -62,10 +62,24 @@ namespace Server.MirObjects
                 ExpireTime = Envir.Time + Settings.ItemTimeOut * Settings.Minute;
 
             Item = item;
+
             if (Item.IsAdded)
                 NameColour = Color.Cyan;
+			else
+			{
+				if (item.Info.Grade == ItemGrade.None)
+					NameColour = Color.White;
+				if (item.Info.Grade == ItemGrade.Common)
+					NameColour = Color.White;
+				if (item.Info.Grade == ItemGrade.Rare)
+					NameColour = Color.DeepSkyBlue;
+				if (item.Info.Grade == ItemGrade.Legendary)
+					NameColour = Color.DarkOrange;
+				if (item.Info.Grade == ItemGrade.Mythical)
+					NameColour = Color.Plum;
+			}
 
-            CurrentMap = dropper.CurrentMap;
+			CurrentMap = dropper.CurrentMap;
             CurrentLocation = dropper.CurrentLocation;
         }
         public ItemObject(MapObject dropper, UserItem item, Point manualpoint)
@@ -73,8 +87,22 @@ namespace Server.MirObjects
             ExpireTime = Envir.Time + Settings.ItemTimeOut * Settings.Minute;
 
             Item = item;
-            if (Item.IsAdded)
-                NameColour = Color.Cyan;
+
+			if (Item.IsAdded)
+				NameColour = Color.Cyan;
+			else
+			{
+				if (item.Info.Grade == ItemGrade.None)
+					NameColour = Color.White;
+				if (item.Info.Grade == ItemGrade.Common)
+					NameColour = Color.White;
+				if (item.Info.Grade == ItemGrade.Rare)
+					NameColour = Color.DeepSkyBlue;
+				if (item.Info.Grade == ItemGrade.Legendary)
+					NameColour = Color.DarkOrange;
+				if (item.Info.Grade == ItemGrade.Mythical)
+					NameColour = Color.Plum;
+			}
 
             CurrentMap = dropper.CurrentMap;
             CurrentLocation = manualpoint;
@@ -417,6 +445,21 @@ namespace Server.MirObjects
         }
 
         public override void ReceiveChat(string text, ChatType type)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override bool IsAttackTarget(HeroObject attacker)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override int Attacked(HeroObject attacker, int damage, DefenceType type = DefenceType.ACAgility, bool damageWeapon = true)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override bool IsFriendlyTarget(HeroObject ally)
         {
             throw new NotSupportedException();
         }

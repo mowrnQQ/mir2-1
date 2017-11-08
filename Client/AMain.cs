@@ -8,6 +8,7 @@ using System.Threading;
 using System.Windows.Forms;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Linq;
 using Client;
 
 
@@ -24,6 +25,7 @@ namespace Launcher
         
         public List<FileInformation> OldList;
         public Queue<FileInformation> DownloadList;
+        public static List<FileInformation> DownloadInfoList;
 
         private Stopwatch _stopwatch = Stopwatch.StartNew();
 
@@ -34,6 +36,10 @@ namespace Launcher
         private Point dragFormPoint;
 
         private string oldClientName = "OldClient.exe";
+        private List<string> AlwaysUpdateFileExts = new List<string>()
+        {
+            ".exe",".dll",".lst"
+        };
 
         private Config ConfigForm = new Config();
 
@@ -67,6 +73,7 @@ namespace Launcher
             {
                 OldList = new List<FileInformation>();
                 DownloadList = new Queue<FileInformation>();
+                DownloadInfoList = new List<FileInformation>();
 
                 byte[] data = Download(Settings.P_PatchFileName);
 
@@ -78,7 +85,7 @@ namespace Launcher
                 }
                 else
                 {
-                    MessageBox.Show("Could not get Patch Information.");
+                    MessageBox.Show("无法获得补丁信息.");
                     Completed = true;
                     return;
                 }
@@ -93,17 +100,18 @@ namespace Launcher
 
 
                 _fileCount = DownloadList.Count;
+                //DownloadInfoList = DownloadList.ToList();
                 BeginDownload();
             }
             catch (EndOfStreamException ex)
             {
-                MessageBox.Show("End of stream found. Host is likely using a pre version 1.1.0.0 patch system");
+                MessageBox.Show("已到流结尾. 服务器使用的是1.1.0.0版本以前的更新系统");
                 Completed = true;
                 SaveError(ex.ToString());
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.ToString(), "Error");
+                MessageBox.Show(ex.ToString(), "错误");
                 Completed = true;
                 SaveError(ex.ToString());
             }
@@ -183,9 +191,56 @@ namespace Launcher
                     File.Move(Settings.P_Client + System.AppDomain.CurrentDomain.FriendlyName, Settings.P_Client + oldClientName);
                     Restart = true;
                 }
-
+                DownloadInfoList.Add(old);
+                if (info == null && !AlwaysUpdateFileExts.Contains(Path.GetExtension(old.FileName))) return;
                 DownloadList.Enqueue(old);
                 _totalBytes += old.Compressed;
+            }
+        }
+
+        public static void Downlaod(FileInformation info, Action downloadCompleteAction = null)
+        {
+            string fileName = info.FileName.Replace(@"\", "/");
+
+            if (fileName != "PList.gz")
+                fileName += ".gz";
+
+            try
+            {
+                using (WebClient client = new WebClient())
+                {
+                    client.DownloadDataCompleted += (o, e) =>
+                    {
+                        if (e.Error != null)
+                        {
+                            File.AppendAllText(@".\Error.txt",
+                                   string.Format("[{0}] {1}{2}", DateTime.Now, info.FileName + " 无法下载. (" + e.Error.Message + ")", Environment.NewLine));
+                        }
+                        else
+                        {
+
+                            if (!Directory.Exists(Settings.P_Client + Path.GetDirectoryName(info.FileName)))
+                                Directory.CreateDirectory(Settings.P_Client + Path.GetDirectoryName(info.FileName));
+
+                            if (!File.Exists(Settings.P_Client + info.FileName))
+                            {
+                                File.WriteAllBytes(Settings.P_Client + info.FileName, e.Result);
+                                File.SetLastWriteTime(Settings.P_Client + info.FileName, info.Creation);
+                                downloadCompleteAction?.Invoke();
+                            }
+                        }
+                        
+                    };
+
+                    if (Settings.P_NeedLogin) client.Credentials = new NetworkCredential(Settings.P_Login, Settings.P_Password);
+
+                    client.DownloadDataAsync(new Uri(Settings.P_Host + fileName));
+                }
+            }
+            catch(Exception e)
+            {
+                File.AppendAllText(@".\Error.txt",
+                    $"[{DateTime.Now}] {info.FileName + " 无法下载. (" + e + ")"}{Environment.NewLine}");
             }
         }
 
@@ -195,7 +250,6 @@ namespace Launcher
 
             if (fileName != "PList.gz")
                 fileName += ".gz";
-
             try
             {
                 using (WebClient client = new WebClient())
@@ -209,7 +263,7 @@ namespace Launcher
                             if (e.Error != null)
                             {
                                 File.AppendAllText(@".\Error.txt",
-                                       string.Format("[{0}] {1}{2}", DateTime.Now, info.FileName + " could not be downloaded. (" + e.Error.Message + ")", Environment.NewLine));
+                                       string.Format("[{0}] {1}{2}", DateTime.Now, info.FileName + " 无法下载. (" + e.Error.Message + ")", Environment.NewLine));
                                 ErrorFound = true;
                             }
                             else
@@ -228,7 +282,7 @@ namespace Launcher
                             BeginDownload();
                         };
 
-                    if (Settings.P_NeedLogin) client.Credentials = new NetworkCredential(Settings.AccountID, Settings.Password);
+                    if (Settings.P_NeedLogin) client.Credentials = new NetworkCredential(Settings.P_Login, Settings.P_Password);
 
 
                     _stopwatch = Stopwatch.StartNew();
@@ -237,7 +291,7 @@ namespace Launcher
             }
             catch
             {
-                MessageBox.Show(string.Format("Failed to download file: {0}", fileName));
+                MessageBox.Show(string.Format("文件下载失败: {0}", fileName));
             }
         }
 
@@ -318,7 +372,7 @@ namespace Launcher
             Launch_pb.Enabled = false;
             ProgressCurrent_pb.Width = 5;
             TotalProg_pb.Width = 5;
-            Version_label.Text = "Version " + Application.ProductVersion;
+            Version_label.Text = "版本 " + Application.ProductVersion;
 
             if (Settings.P_ServerName != String.Empty)
             {
@@ -465,7 +519,7 @@ namespace Launcher
                 {
                     
                     ActionLabel.Text = "";
-                    CurrentFile_label.Text = "Up to date.";
+                    CurrentFile_label.Text = "已是最新版.";
                     SpeedLabel.Text = "";
                     ProgressCurrent_pb.Width = 550;
                     TotalProg_pb.Width = 550;
@@ -476,13 +530,13 @@ namespace Launcher
                     TotalPercent_label.Text = "100%";
                     InterfaceTimer.Enabled = false;
                     Launch_pb.Enabled = true;
-                    if (ErrorFound) MessageBox.Show("One or more files failed to download, check Error.txt for details.", "Failed to Download.");
+                    if (ErrorFound) MessageBox.Show("一个或多个文件下载失败, 检查 Error.txt 中的详细信息.", "下载失败.");
                     ErrorFound = false;
 
                     if (CleanFiles)
                     {
                         CleanFiles = false;
-                        MessageBox.Show("Your files have been cleaned up.", "Clean Files");
+                        MessageBox.Show("文件已经清理成功.", "清理系统");
                     }
 
                     if (Restart)
@@ -507,8 +561,8 @@ namespace Launcher
                 CurrentPercent_label.Visible = true;
                 TotalPercent_label.Visible = true;
 
-                if (LabelSwitch) ActionLabel.Text = string.Format("{0} Files Remaining", _fileCount - _currentCount);
-                else ActionLabel.Text = string.Format("{0:#,##0}MB Remaining",  ((_totalBytes) - (_completedBytes + _currentBytes)) / 1024 / 1024);
+                if (LabelSwitch) ActionLabel.Text = string.Format("{0} 文件剩余", _fileCount - _currentCount);
+                else ActionLabel.Text = string.Format("{0:#,##0}MB 剩余",  ((_totalBytes) - (_completedBytes + _currentBytes)) / 1024 / 1024);
 
                 //ActionLabel.Text = string.Format("{0:#,##0}MB / {1:#,##0}MB", (_completedBytes + _currentBytes) / 1024 / 1024, _totalBytes / 1024 / 1024);
 
@@ -520,8 +574,8 @@ namespace Launcher
                     CurrentPercent_label.Text = ((int)(100 * _currentBytes / _currentFile.Compressed)).ToString() + "%";
                     ProgressCurrent_pb.Width = (int)( 5.5 * (100 * _currentBytes / _currentFile.Compressed));
                 }
-                TotalPercent_label.Text = ((int)(100 * (_completedBytes + _currentBytes) / _totalBytes)).ToString() + "%";
-                TotalProg_pb.Width = (int)(5.5 * (100 * (_completedBytes + _currentBytes) / _totalBytes));
+                TotalPercent_label.Text = _totalBytes == 0 ? "0" : ((int)(100 * (_completedBytes + _currentBytes) / _totalBytes)).ToString() + "%";
+                TotalProg_pb.Width = _totalBytes == 0 ? 0 : (int)(5.5 * (100 * (_completedBytes + _currentBytes) / _totalBytes));
             }
             catch
 
@@ -543,7 +597,7 @@ namespace Launcher
 
         private void Credit_label_Click(object sender, EventArgs e)
         {
-            if (Credit_label.Text == "Powered by Crystal M2") Credit_label.Text = "Designed by Breezer";
+            if (Credit_label.Text == "Powered by Crystal M2") Credit_label.Text = "Designed by Breezer zhzhwcn汉化";
             else Credit_label.Text = "Powered by Crystal M2";
         }
 
