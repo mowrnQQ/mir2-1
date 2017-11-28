@@ -5092,9 +5092,9 @@ namespace Server.MirObjects
                             tempConq.WarIsOn = !tempConq.WarIsOn;
                             tempConq.AttackerID = MyGuild.Guildindex;
                         }
-                        else return;
-                        ReceiveChat(string.Format("{0} War Started.", tempConq.Info.Name), ChatType.System);
-                        SMain.Enqueue(string.Format("{0} War Started.", tempConq.Info.Name));
+                        hintstring = tempConq.WarIsOn ? "{0} War Started." : "{0}The war is over.";
+                        ReceiveChat(string.Format(hintstring, tempConq.Info.Name), ChatType.System);
+                        SMain.Enqueue(string.Format(hintstring, tempConq.Info.Name));
                         break;
                     case "RESETCONQUEST":
                         //Needs some work, but does job for now.
