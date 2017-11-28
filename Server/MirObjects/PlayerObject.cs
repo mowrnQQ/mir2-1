@@ -33,7 +33,7 @@ namespace Server.MirObjects
             get { return ObjectType.Player; }
         }
 
-        public CharacterInfo Info;
+        public Chara;
         public AccountInfo Account;
         public MirConnection Connection;
         public Reporting Report;
